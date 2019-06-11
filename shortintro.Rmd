@@ -1,6 +1,6 @@
 ---
 title: "PUcopula"
-author: "Andreas Mändle"
+#author: "Andreas Mändle"
 date: "`r Sys.time()`"
 output: pdf_document
 ---
