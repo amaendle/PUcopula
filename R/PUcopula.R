@@ -170,7 +170,7 @@ NULL
 #' # for a Gamma PUC the alphs are densities of inverse Pareto distributions...
 #' plot(x@alphs[[1]], xlim=c(0,500))
 #' # the fdenss are basically a normalization of the phis using alphs - for a fixes s they are densities of exponentially transformed Gamma distributions
-#' heatplot:
+#' # heatplot:
 #' us <- seq(0,1,length.out=100)
 #' ss <- seq(1,500,length.out=100)
 #' zs <- matrix(nrow=length(us),ncol=length(ss))
@@ -265,7 +265,7 @@ PUCopula <- setClass("PUCopula",
 )
 
 #' @describeIn PUCopula initializes a PUcopula object
-setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Gauss"), data, continuous=logical(0)) {
+setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Gauss"), data, continuous=logical(0), numericCDF  = FALSE) {
   .Object@dim = dimension # Dimension der Copula
   .Object@family = family # welcher Copula-Typ
   .Object@par.factor = factor #parameter fuer unterteilung patchwork?
@@ -410,7 +410,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   .Object@psy = fam2phi(rep_len(.Object@family,2)[2], rep_len(.Object@pars.a,2)[2])
   .Object@phi = fam2phi(rep_len(.Object@family,2)[1], rep_len(.Object@pars.a,2)[1])
   fam2cont <- function(family) {
-    if ("1" %in% c("binom","nbinom","sample","poisson")) {
+    if (family %in% c("binom","nbinom","sample","poisson")) {
       continuous = FALSE
     }
     else {
@@ -529,7 +529,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     rs <- lapply(1:length(alphsCDF), deffun)
     return(rs)
   }
-  .Object@cdflim = suppressWarnings(cdfmima(.Object@alphsCDF))
+  if (!numericCDF) {
+    .Object@cdflim = list(NULL)
+  } else {
+    .Object@cdflim = suppressWarnings(cdfmima(.Object@alphsCDF))
+  }
+
 
   getcdfdom <- function(alphsCDF) {
     deffun <- function(i) {
@@ -555,7 +560,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     return(rs)
   }
 
-  .Object@cdfdom = getcdfdom(.Object@alphsCDF)
+  if (!numericCDF) {
+    .Object@cdfdom = list(NULL)
+  } else {
+    .Object@cdfdom = getcdfdom(.Object@alphsCDF)
+  }
 
   cdfapprox <- function(alphsCDF) {
     deffun <- function(i) {
@@ -574,7 +583,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     return(rs)
   }
 
-  .Object@cdfappx= cdfapprox(.Object@alphsCDF)
+  if (!numericCDF) {
+    .Object@cdfappx = list(NULL)
+  } else {
+    .Object@cdfappx= cdfapprox(.Object@alphsCDF)
+  }
 
   splineqt <- function(cdfappx) {
     get.mimaq <- function(fun) {
@@ -622,7 +635,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     return(rs)
   }
 
-  .Object@alphsquantf = splineqt(.Object@cdfappx)
+  if (!numericCDF) {
+    .Object@alphsquantf = list(NULL)
+  } else {
+    .Object@alphsquantf = splineqt(.Object@cdfappx)
+  }
 
   cdfs2objv <- function(cdfs) {
     deffun <- function(i) {
@@ -632,7 +649,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     objv <- lapply(1:length(cdfs), deffun)
     return(objv)
   }
-  .Object@alphsobjective = cdfs2objv(.Object@alphsCDF)
+  if (!numericCDF) {
+    .Object@alphsobjective = list(NULL)
+  } else {
+    .Object@alphsobjective = cdfs2objv(.Object@alphsCDF)
+  }
 
   objv2quant <- function(objv) {
     deffun <- function(i) {
@@ -642,7 +663,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     quant <- lapply(1:length(objv), deffun)
     return(quant)
   }
-  .Object@alphsquant = objv2quant(.Object@alphsobjective)
+  if (!numericCDF) {
+    .Object@alphsquant = list(NULL)
+  } else {
+    .Object@alphsquant = objv2quant(.Object@alphsobjective)
+  }
 
   phis2dens <- function(phis,alphs) {
     deffun <- function(i) {
@@ -656,7 +681,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   }
   .Object@fdens = function(u,s) return(.Object@phi(u,s)/.Object@alph(s))
   .Object@gdens = function(u,s) {.Object@psy(u,s)/.Object@beta(s)}
-  .Object@fdenss = phis2dens(.Object@phis,.Object@alphs)
+ # if (!numericCDF) {
+#    .Object@fdenss = list(NULL)
+#  } else {
+    .Object@fdenss = phis2dens(.Object@phis,.Object@alphs)
+#  }
+
   #einfach mal standardmäßig Gauss(0.8) fuer cpatch festsetzen
   .Object@cpatch = function(s,t) { copula::dCopula(u=c(s,t), copula = copula::normalCopula(0.8, dim=2)) }
   #density of PU copula statt Inf nur 100... :/
@@ -707,70 +737,79 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   # step 2 (urvs for each dimension/observation)
   usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
   # step 3
-  par.m <- dim(.Object@ranks)[1] # oder in obj speichern? #Anz Zeilen/Beobachtungen
+  par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen
   switch(.Object@patch,#match.arg(.Object@patch),
   none = {Z <- (rsims-1.0)/par.m},
   rook = {Z <- (rsims-usims)/par.m},
   lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
   uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
   Gauss = {Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(0.8, dim=obj@dim))  )/par.m})
-  # step 4
-  # switch(.Object@family,#match.arg(.Object@family),
-  # binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
-  # nbinom = {d<-floor(sweep(Z/(1-Z),2,.Object@pars.a,"*"))},
-  # sample = {
-  #           rr<-t(matrixStats::colRanks(Z)-0.5)/dim(Z)[1]  # colRanks(Z)-0.5 wie oben mit stetigkeitskorrektur # var ranks # rel ranks
-  #           foo <- function(rrx,n) {table(cut(rrx,breaks=seq(0,1,length.out=n+1), ordered_result=FALSE))}
-  #           print(.Object@pars.a) # our "n"; mv?
-  #           newpartition <- apply(rr,2,foo, n=.Object@pars.a)/dim(rr)[1]  # ^^verwendet f?r alle spaltengleichen parameter
-  #           newpartition <- apply(newpartition,2,cumsum)
-  #           p_index <- function(u,part) {      #  function f?r eine Zeile i von newppartition:
-  #           test<- matrix(t(u),dim(part)[1],dim(part)[2],TRUE)<part
-  #           test[which(!test)]<-NA
-  #           return(apply(test*part, 2, which.min))
-  #           }
-  #           d<-t(apply(Z,1,p_index,part=newpartition))
-  #           },
-  # poisson = {d<-floor(sweep(-log(1-Z),2,(log(.Object@pars.a+1)-log(.Obect@pars.a)),"/"))} )
-            #alternative numerically
-            d <- Z # d <- matrix()
-            print("Z")
-            print(Z)
-           # for (i in 1:.Object@dim) d[,i] <- .Object@alphsquant[[i]](Z[,i]) #richtig?
-            for (i in 1:.Object@dim) d[,i] <- .Object@alphsquantf[[i]](Z[,i]) #richtiger?
+  # missing: bernstein, varwc
 
-            #step next: result possesses the joint distribution P with desired marginals
-            print(paste("d",d))
-            rs <- d
-            for (i in 1:.Object@dim) for (j in 1:n)  {
-              print(paste("i",i,"j",j))
-              print(paste("rs[j,i]",rs[j,i]))
-              print(paste("d[j,i]",d[j,i]))
-           #   print(paste("replacement",.mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } ) ))
-           #   rs[j,i] <- .mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } )       #ob das funktioniert, index i korrekt benutzt??
-             # rs[j,i] <- .mh_sample(dens = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } )       #ob das funktioniert, index i korrekt benutzt??
-              smpl <- armspp::arms(5000, function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } , 0, 1)#smpl <- armspp::arms(5000, .Object@fdenss[[i]](u=theta,s=d[j,i],log=T), 0, 1)
-              rs[j,i] <- smpl[length(smpl)]
-            }
-            #^^ ranks ist falsch hier?
-            return(rs)
-  # step 5
-  # switch(.Object@family,#match.arg(.Object@family),
-  # binom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
-  #           d,
-  #           matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d))},
-  # nbinom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
-  #           d+1,
-  #           matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))} ,
-  # sample = {  unif_i <- function(i,partition) {
-  #           npart<-rbind(0,partition)
-  #           return(runif(1,min=npart[i],max=npart[i+1]))
-  #           }
-  #           return( apply(d,1:2,unif_i,partition=newpartition) )} ,
-  # poisson = {return(1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
-  #           shape=d+1,
-  #           scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) }
-  # )
+  if (!numericCDF) {
+    #step 4
+    switch(.Object@family,#match.arg(.Object@family),
+    binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
+    nbinom = {d<-floor(sweep(Z/(1-Z),2,.Object@pars.a,"*"))},
+    sample = {
+              rr<-t(matrixStats::colRanks(Z)-0.5)/dim(Z)[1]  # colRanks(Z)-0.5 wie oben mit stetigkeitskorrektur # var ranks # rel ranks
+              foo <- function(rrx,n) {table(cut(rrx,breaks=seq(0,1,length.out=n+1), ordered_result=FALSE))}
+              print(.Object@pars.a) # our "n"; mv?
+              newpartition <- apply(rr,2,foo, n=.Object@pars.a)/dim(rr)[1]  # ^^verwendet f?r alle spaltengleichen parameter
+              newpartition <- apply(newpartition,2,cumsum)
+              p_index <- function(u,part) {      #  function f?r eine Zeile i von newppartition:
+              test<- matrix(t(u),dim(part)[1],dim(part)[2],TRUE)<part
+              test[which(!test)]<-NA
+              return(apply(test*part, 2, which.min))
+              }
+              d<-t(apply(Z,1,p_index,part=newpartition))
+              },
+    gamma = {d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1  },
+    poisson = {d<-floor(sweep(-log(1-Z),2,(log(.Object@pars.a+1)-log(.Object@pars.a)),"/"))} )
+    #step 5
+    switch(.Object@family,#match.arg(.Object@family),
+    binom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+              d,
+              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d))},
+    nbinom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+              d+1,
+              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))} ,
+    sample = {  unif_i <- function(i,partition) {
+              npart<-rbind(0,partition)
+              return(runif(1,min=npart[i],max=npart[i+1]))
+              }
+              return( apply(d,1:2,unif_i,partition=newpartition) )} ,
+    gamma = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+                          matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T),
+                          1+d))) },
+    poisson = {return(1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+              shape=d+1,
+              scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) }
+    )
+  } else {
+    #alternative numerically
+    d <- Z # d <- matrix()
+    print("Z")
+    print(Z)
+    # for (i in 1:.Object@dim) d[,i] <- .Object@alphsquant[[i]](Z[,i]) #richtig?
+    for (i in 1:.Object@dim) d[,i] <- .Object@alphsquantf[[i]](Z[,i]) #richtiger?
+
+    #step next: result possesses the joint distribution P with desired marginals
+    print(paste("d",d))
+    rs <- d
+    for (i in 1:.Object@dim) for (j in 1:n)  {
+      print(paste("i",i,"j",j))
+      print(paste("rs[j,i]",rs[j,i]))
+      print(paste("d[j,i]",d[j,i]))
+      #   print(paste("replacement",.mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } ) ))
+      #   rs[j,i] <- .mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } )       #ob das funktioniert, index i korrekt benutzt??
+      # rs[j,i] <- .mh_sample(dens = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } )       #ob das funktioniert, index i korrekt benutzt??
+      smpl <- armspp::arms(5000, function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } , 0, 1)#smpl <- armspp::arms(5000, .Object@fdenss[[i]](u=theta,s=d[j,i],log=T), 0, 1)
+      rs[j,i] <- smpl[length(smpl)]
+    }
+    #^^ ranks ist falsch hier?
+    return(rs)
+  }
 
 }
 
