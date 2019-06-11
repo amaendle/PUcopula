@@ -1,7 +1,7 @@
 ---
 title: "PUcopula"
-#author: "Andreas Mändle"
-date: "`r Sys.time()`"
+author: "Andreas Mändle (University of Bremen)"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
@@ -21,10 +21,9 @@ management (part II) (with A. Mändle and O. Ragulina). Dependence Modeling
 
 So far the package *PUcopula* is not available on CRAN, but the development version can be installed from GitHub using the *install_github* function from the package *devtools*:
 
-```{r, message=FALSE, warning=FALSE}
-# uncomment the following to install:
-#library(devtools)
-#install_github("amaendle/PUcopula")
+```{r, message=FALSE, warning=FALSE, eval=F}
+library(devtools)
+install_github("amaendle/PUcopula")
 ```
 
 ### Load the package
