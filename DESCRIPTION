@@ -1,0 +1,13 @@
+Package: PUcopula
+Type: Package
+Title: Structures and functions for partition of unity copulas
+Version: 0.1.0
+Author: Andreas Maendle <maendle@uni-bremen.de>
+Maintainer: Andreas Maendle <maendle@uni-bremen.de>
+Description: Structures for creating some types of partition of unity copula.
+    Use four spaces when indenting paragraphs within the Description.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Depends: R (>= 2.10)
+RoxygenNote: 6.0.1

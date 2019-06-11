@@ -1,0 +1,15 @@
+---
+title: "PUcopula"
+author: "Andreas Mändle"
+date: "`r Sys.time()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Short introduction to the PUcopula R-package
+
+So far the package is not available on CRAN, but the development version can be installed from github:
+
