@@ -13,8 +13,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In this short introduction it will be shown how to use the PUcopula package. The following examples are based on:
 
-*[1] New copulas based on general partitions-of-unity and their applications to risk
-management (part II) (with A. Mändle and O. Ragulina). Dependence Modeling
+*[1] Pfeifer, D., Mändle, A. & Ragulina, O., New copulas based on general partitions-of-unity and their applications to risk
+management (part II). Dependence Modeling
 (2017), 246 – 255. https://doi.org/10.1515/demo-2017-0014 *
 
 ### Install
@@ -34,7 +34,7 @@ library(PUcopula)
 
 In the following examples the data from the paper
 
-*[2] From Bernstein polynomials to Bernstein copulas (with C. Cottin), Journal of
+*[2] Cottin, C. & Pfeifer, D. (2014)., From Bernstein polynomials to Bernstein copulas, Journal of
 Applied Functional Analysis (2014), 277 – 288*
 
 are considered. The data can be accessed directly from the package:
