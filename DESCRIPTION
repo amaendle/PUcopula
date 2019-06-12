@@ -5,9 +5,10 @@ Version: 0.1.0
 Author: Andreas Maendle <maendle@uni-bremen.de>
 Maintainer: Andreas Maendle <maendle@uni-bremen.de>
 Description: Structures for creating some types of partition of unity copula.
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+    Based on joint work with Dietmar Pfeifer and Olena Ragulina.
+License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
 Depends: R (>= 2.10)
-RoxygenNote: 6.0.1
+RoxygenNote: 6.1.0
+

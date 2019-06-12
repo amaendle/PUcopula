@@ -19,6 +19,18 @@
 #' @keywords storm and flood losses
 NULL
 
+#' natperils
+#'
+#' This is the 19-dimensional data set presented in Neumann et al. (2019), Tab. 2 and Tab. 3.
+#'
+#' The data contains insurance losses from a non-life portfolio of natural perils in 19 areas in central Europe over a time period of 20 years. The monetary unit is 1 million €.
+#'
+#' @name natperils
+#' @docType data
+#' @references Neumann, A., Bodnar, T., Pfeifer, D., & Dickhaus, T. (2019). Multivariate multiple test procedures based on nonparametric copula estimation. Biometrical Journal, 61(1), 40-61.
+#' @keywords natural perils, non-life insurance losses
+NULL
+
 # cf: #http://sbfnk.github.io/mfiidd/mcmc.html
 # - target: the target distribution, a function that takes one
 #   argument (a number) and returns the (logged) value of a

@@ -9,8 +9,8 @@
 \usage{
 \S4method{initialize}{PUCopula}(.Object, dimension = 0, factor = 1,
   family = c("binom", "nbinom", "poisson", "sample", "gamma", "beta"),
-  pars.a = c(10, 10), patch = c("rook", "uFrechet", "lFrechet", "varwc",
-  "Gauss"), data, continuous = logical(0))
+  pars.a = c(10, 10), patch = c("rook", "uFrechet", "lFrechet",
+  "varwc", "Gauss"), data, continuous = logical(0), numericCDF = FALSE)
 }
 \value{
 An object of class PUcopula
@@ -36,9 +36,9 @@ An S4 class to represent a partition of unity copula.
 
 \item{\code{p}}{A length-one numeric vector}
 
-\item{\code{phis}}{A list of functions \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
+\item{\code{phis}}{A list of functions \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
 \deqn{\varphi_k(s,u)\geq 0 \text{ and } \int_{-\infty}^\infty \varphi_k(s,u)\, ds = 1 \text{ for } u \in (0,1),}{phi_k(s,u) \geq 0 and \int phi_k(s,u), ds = 1 for u in (0,1),}
-Or: A list of functions which represent discrete probabilities over Z+ with a parameter u in (0,1).}
+Or (discrete case): A list of functions which represent discrete probabilities over Z+ with a parameter u in (0,1).}
 
 \item{\code{alphs}}{A list of functions. Integral over the elements of phis w.r.t. u, i.e. \deqn{\alpha_k(s):=\int_0^1 \varphi_k(s,u)\, du \in (0,\infty)}{alpha_k(s):=int_0^1 phi_k(s,u) du in (0,\infty)}}
 
@@ -112,7 +112,7 @@ for (i in 2:500) {
 # for a Gamma PUC the alphs are densities of inverse Pareto distributions...
 plot(x@alphs[[1]], xlim=c(0,500))
 # the fdenss are basically a normalization of the phis using alphs - for a fixes s they are densities of exponentially transformed Gamma distributions
-heatplot:
+# heatplot:
 us <- seq(0,1,length.out=100)
 ss <- seq(1,500,length.out=100)
 zs <- matrix(nrow=length(us),ncol=length(ss))
@@ -132,9 +132,9 @@ x@phi(0.5,0.5)
 #[1] 2.210851e-11
 x@alph(0.6)
 #[1] 1.458522e-11
-x@fdens(0.5,0.6)
+#x@fdens(0.5,0.6)
 #[1] 0.0002381545
-x@gdens(0.5,0.6)
+#x@gdens(0.5,0.6)
 #[1] 0.0001616076
 x@fdenss[[1]](0.5,0.6)
 #[1] 0.0002381545
