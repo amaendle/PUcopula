@@ -10,7 +10,8 @@
 \S4method{initialize}{PUCopula}(.Object, dimension = 0, factor = 1,
   family = c("binom", "nbinom", "poisson", "sample", "gamma", "beta"),
   pars.a = c(10, 10), patch = c("rook", "uFrechet", "lFrechet",
-  "varwc", "Gauss"), data, continuous = logical(0), numericCDF = FALSE)
+  "varwc", "Bernstein", "Gauss"), patchpar = list(NULL), data,
+  continuous = logical(0), numericCDF = FALSE)
 }
 \value{
 An object of class PUcopula
@@ -33,6 +34,8 @@ An S4 class to represent a partition of unity copula.
 \item{\code{par.factor}}{A length-n numeric vector}
 
 \item{\code{pars.a}}{A length-one numeric vector: defined as integral from 0 to 1 over phi(s,u) for s in r. Will be evauated numerically}
+
+\item{\code{patchpar}}{A list containing parameters for the copula driver, e.g. rho in case of Gauss, K,m in case of Bernstein,...}
 
 \item{\code{p}}{A length-one numeric vector}
 
@@ -84,7 +87,7 @@ plot(x@ranks, sub="emp. rank vectors", xlab="", ylab="")
 # plot the lower Fréchet driver, i.e. phi=-1
 plot(x@rpatch(2000,"lFrechet"), sub="lower Fréchet driver, phi=-1", xlab="", ylab="")
 # plot for phi=-0.8
-plot(x@rpatch(2000,"Gauss",-0.8), sub="phi = -0.8", xlab="", ylab="")
+plot(x@rpatch(2000,"Bernstein",list(m=20,K=20)), sub="Bernstein copula, m=20, K=20", xlab="", ylab="")
 # plot for phi=0 (rook copula)
 plot(x@rpatch(2000,"rook"), sub="rook copula, phi=0", xlab="", ylab="")
 # plot for phi=0.9
@@ -93,6 +96,7 @@ plot(x@rpatch(2000,"Gauss",0.9), sub="phi=0.9", xlab="", ylab="")
 plot(x@rpatch(2000,"uFrechet"), sub="upper Fréchet driver, phi=1", xlab="", ylab="")
 # single plot window
 par(mfrow=c(1,1))
+plot(x@rpatch(2000,"Gauss",-0.8), sub="phi = -0.8", xlab="", ylab="")
 
 # plot the densities given by phis (=densities of Gamma distributions)
 # plot for s=1,3,5,7,...,999 (s must be in (0,inf))

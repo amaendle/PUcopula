@@ -8,7 +8,7 @@
 #   Check Package:             'Ctrl + Shift + E'
 #   Test Package:              'Ctrl + Shift + T'
 
-#' stormflood
+#' storm and flood losses data set
 #'
 #' This is the data set used in Cottin, Pfeifer (2014).
 #'     The table contains some original data from an insurance portfolio of storm and flooding losses, observed over a period of 20 years.
@@ -19,7 +19,7 @@
 #' @keywords storm and flood losses
 NULL
 
-#' natperils
+#' losses from natural perils data set
 #'
 #' This is the 19-dimensional data set presented in Neumann et al. (2019), Tab. 2 and Tab. 3.
 #'
@@ -117,6 +117,7 @@ NULL
 #' @slot family Character or vector of characters: family determining the desnities fdens
 #' @slot par.factor A length-n numeric vector
 #' @slot pars.a A length-one numeric vector: defined as integral from 0 to 1 over phi(s,u) for s in r. Will be evauated numerically
+#' @slot patchpar A list containing parameters for the copula driver, e.g. rho in case of Gauss, K,m in case of Bernstein,...
 #' @slot p A length-one numeric vector
 #' @slot phis A list of functions \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
 #'       \deqn{\varphi_k(s,u)\geq 0 \text{ and } \int_{-\infty}^\infty \varphi_k(s,u)\, ds = 1 \text{ for } u \in (0,1),}{phi_k(s,u) \geq 0 and \int phi_k(s,u), ds = 1 for u in (0,1),}
@@ -154,7 +155,7 @@ NULL
 #' # plot the lower Fréchet driver, i.e. phi=-1
 #' plot(x@rpatch(2000,"lFrechet"), sub="lower Fréchet driver, phi=-1", xlab="", ylab="")
 #' # plot for phi=-0.8
-#' plot(x@rpatch(2000,"Gauss",-0.8), sub="phi = -0.8", xlab="", ylab="")
+#' plot(x@rpatch(2000,"Bernstein",list(m=20,K=20)), sub="Bernstein copula, m=20, K=20", xlab="", ylab="")
 #' # plot for phi=0 (rook copula)
 #' plot(x@rpatch(2000,"rook"), sub="rook copula, phi=0", xlab="", ylab="")
 #' # plot for phi=0.9
@@ -234,6 +235,7 @@ PUCopula <- setClass("PUCopula",
                        family = "character",
                        par.factor = "numeric",
                        pars.a = "numeric",
+                       patchpar = "list",
                        p = "matrix",
                          phi = "function",
                          psy = "function",
@@ -277,18 +279,21 @@ PUCopula <- setClass("PUCopula",
 )
 
 #' @describeIn PUCopula initializes a PUcopula object
-setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Gauss"), data, continuous=logical(0), numericCDF  = FALSE) {
+setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
   .Object@dim = dimension # Dimension der Copula
   .Object@family = family # welcher Copula-Typ
   .Object@par.factor = factor #parameter fuer unterteilung patchwork?
   .Object@pars.a = pars.a # Parameter fur Verteilung von phi
   .Object@patch = patch # entweder patchworktyp oder komplett definiertes patchwork
+  .Object@patchpar = patchpar # Parameter für Patchwork
   .Object@data = data # Slot für Daten
   # Ränge berechnen sofern nicht vorhanden; ebenfalls relative Ränge
   if(length(.Object@ranks)==0) {
     .Object@ranks <- as.matrix(apply(.Object@data,2,rank)/.Object@par.factor)
     if(length(.Object@relRanks)==0) {
-      par.m <- dim(.Object@ranks)[1]
+      par.m <- dim(.Object@ranks)[1] # NULL?
+      par.K <- dim(.Object@ranks)[1] # NULL?
+      par.rho <- NULL
       .Object@relRanks <- as.matrix(.Object@ranks/(1+par.m))
     }
   }
@@ -426,7 +431,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
       continuous = FALSE
     }
     else {
-      if (family %in% c("gamma","beta")) {
+      if (family %in% c("gamma","beta","power")) {
         continuous = TRUE
       } else {  ### das sollte eigentlich nur geschehen wenn Wert nicht vorgegeben:
          continuous = .Object@phis[[1]](u=0.5,s=0.9)>0  ## ob das so funktiooniert-....
@@ -512,7 +517,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     rs <- lapply(1:length(alphs), deffun)
     return(rs)
   }
-  .Object@opstart = suppressWarnings(nlmstart(.Object@alphs))
+
+  if (!numericCDF) {
+    .Object@opstart = list(NULL)
+  } else {
+    .Object@opstart = suppressWarnings(nlmstart(.Object@alphs))
+  }
 
   cdfmima <- function(alphsCDF) {
     seqtails <- function(length.out=100) {
@@ -637,7 +647,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
           qm-(((1-2*x)*k1)/(2*x))
         }
 
-        rs[x<mimax[2]&x>mimax[1]] <- qtfun(x[x<mimax[2]&x>mimax[1]])
+        rs[x<mimax[2]&x>mimax[1]] <- cdfappx[[i]](x[x<mimax[2]&x>mimax[1]])  # ????? qtfun(x[x<mimax[2]&x>mimax[1]])
         rs[x>mimax[2]] <- tl2(x[x>mimax[2]])
         rs[x<mimax[1]] <- tl1(x[x<mimax[1]])
         return(rs)
@@ -730,35 +740,62 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     # step 2
     usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
     # step 3
-    par.m <- dim(.Object@ranks)[1] # oder in obj speichern? #Anz Zeilen/Beobachtungen
+    if (is.list(patchpar)) {
+      par.m <- patchpar$m
+      par.K <- patchpar$K
+      par.rho <- patchpar$rho
+    }
+    if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+    if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     switch(patch,
            none = {Z <- (rsims-1.0)/par.m},
            rook = {Z <- (rsims-usims)/par.m},
            lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
            uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
+           Bernstein = { J <- floor(runif(n)*par.K)
+                         Z <- qbeta( usims,
+                                    sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
+                                    sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
+                                    )  },
            Gauss = {
-             if (is.null(patchpar)) warning("patchpar must not be NULL when patch is Gauss")
-             Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(patchpar, dim=.Object@dim))  )/par.m})
+             if (is.numeric(patchpar)) par.rho=patchpar
+             if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
+             Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
     return(Z)
   }
   #simulating: main function
-  .Object@rand =  function(n=1) {
+  .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL) {
   # step 1 (select random pair of ranks)
   rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
   rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
   # step 2 (urvs for each dimension/observation)
   usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
   # step 3
-  par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen
+  if (is.list(patchpar)) {
+    par.m <- patchpar$m
+    par.K <- patchpar$K
+    par.rho <- patchpar$rho
+  }
+  if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+  if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+#  par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+#  par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   switch(.Object@patch,#match.arg(.Object@patch),
   none = {Z <- (rsims-1.0)/par.m},
   rook = {Z <- (rsims-usims)/par.m},
   lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
   uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
-  Gauss = {Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(0.8, dim=obj@dim))  )/par.m})
+  Bernstein = { J <- floor(runif(n)*par.K)
+                Z <- qbeta( usims,
+                            sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
+                            sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
+                          )  },
+  Gauss = {
+    if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
+    Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=obj@dim))  )/par.m})
   # missing: bernstein, varwc
 
-  if (!numericCDF) {
+  if (TRUE | !numericCDF) {
     #step 4
     switch(.Object@family,#match.arg(.Object@family),
     binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
@@ -777,6 +814,14 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               d<-t(apply(Z,1,p_index,part=newpartition))
               },
     gamma = {d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1  },
+    beta = {d<- exp(1-(1/Z)) },
+     power = {
+       d<-Z #dummy
+       d[,1] <- .Object@alphsquantf[[1]](Z[,1])
+       d[,2] <- .Object@alphsquantf[[2]](Z[,2])
+       #thresh <- (1)/(1)
+       #d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1
+       },
     poisson = {d<-floor(sweep(-log(1-Z),2,(log(.Object@pars.a+1)-log(.Object@pars.a)),"/"))} )
     #step 5
     switch(.Object@family,#match.arg(.Object@family),
@@ -794,9 +839,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     gamma = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                           matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T),
                           1+d))) },
+    beta = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+                                 2,
+                                 1/(1-ln(d))))) },
     poisson = {return(1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
-              shape=d+1,
-              scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) }
+                                    shape=d+1,
+                                    rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))) } #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) }
     )
   } else {
     #alternative numerically
@@ -807,12 +855,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     for (i in 1:.Object@dim) d[,i] <- .Object@alphsquantf[[i]](Z[,i]) #richtiger?
 
     #step next: result possesses the joint distribution P with desired marginals
-    print(paste("d",d))
     rs <- d
+
+    print(paste("d",d))
     for (i in 1:.Object@dim) for (j in 1:n)  {
-      print(paste("i",i,"j",j))
-      print(paste("rs[j,i]",rs[j,i]))
-      print(paste("d[j,i]",d[j,i]))
+      print(paste("i",i,"j",j,"d[j,i]",d[j,i]))
       #   print(paste("replacement",.mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } ) ))
       #   rs[j,i] <- .mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } )       #ob das funktioniert, index i korrekt benutzt??
       # rs[j,i] <- .mh_sample(dens = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } )       #ob das funktioniert, index i korrekt benutzt??

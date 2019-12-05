@@ -3,7 +3,7 @@
 \docType{data}
 \name{natperils}
 \alias{natperils}
-\title{natperils}
+\title{losses from natural perils data set}
 \description{
 This is the 19-dimensional data set presented in Neumann et al. (2019), Tab. 2 and Tab. 3.
 }

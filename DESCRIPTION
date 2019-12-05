@@ -9,6 +9,6 @@ Description: Structures for creating some types of partition of unity copula.
 License: GPL (>= 2)
 Encoding: UTF-8
 LazyData: true
-Depends: R (>= 2.10)
+Depends: R (>= 2.10), msm
 RoxygenNote: 6.1.0
 

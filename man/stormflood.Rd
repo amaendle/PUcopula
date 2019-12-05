@@ -3,7 +3,7 @@
 \docType{data}
 \name{stormflood}
 \alias{stormflood}
-\title{stormflood}
+\title{storm and flood losses data set}
 \description{
 This is the data set used in Cottin, Pfeifer (2014).
     The table contains some original data from an insurance portfolio of storm and flooding losses, observed over a period of 20 years.
