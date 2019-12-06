@@ -302,30 +302,6 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     .Object@dim <- dim(.Object@ranks)[2]  # replace x@ranks by .Object@
   }
 
-         # binom = {
-         #   .Object@phi = function(u,s) {
-         #     if (u%%1==0) {
-         #       warning(paste("non-integer value for u =",u))
-         #       return(0)
-         #     }
-         #     dbeta(x=u,shape1=s,shape2=pars.a[1]+1-s)/pars.a[1] #pars.a[2]???
-         #   }
-         # },
-         # nbinom = {
-         #   .Object@phi = function(u,s) {
-         #     if (s%%1==0) {
-         #       warning(paste("non-integer value for s =",s))
-         #       return(0)
-         #     }
-         #     dbeta(x=u,shape1=s+1,shape2=pars.a[1]+1)*pars.a[1]/((pars.a[1]+s)*(pars.a[1]+s+1)) #pars.a[2]???
-         #   }
-         # } ,
-         # poisson = {
-         #   .Object@phi = function(u,s) {
-         #     (1-u)^pars.a[1]*( pars.a[1]^s * ((-log(1-u))^s)/factorial(s)  )  #pars.a[2]???
-         #   }
-         # },
-
   fam2phi <- function(family, par.a) {
     force(par.a)
     force(family)
@@ -378,7 +354,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                return((u<=pn2r)*(u>pn2l))
              }
            } ,
-           poisson = {
+           poisson = { # was: poisson
              phi = function(u,s) {
                if (s%%1!=0) {
                  warning(paste("non-integer value for s =",s))
@@ -409,7 +385,15 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                return(result*(s<=1)*(s>=0))
                # 0<u,s<1, a in N
              }
-           }
+           },
+           power = {
+             phi = function(u,s) {
+               ifelse(u<0|1<u|s<0|1<s, 0, ifelse(s<=u,
+                                                 par.a*(s/u)^(par.a-1),
+                                                  par.a*(1-s/1-u)^(par.a-1))
+                      )
+               }
+             }
     )
     return(phi)
   }
@@ -427,14 +411,21 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   .Object@psy = fam2phi(rep_len(.Object@family,2)[2], rep_len(.Object@pars.a,2)[2])
   .Object@phi = fam2phi(rep_len(.Object@family,2)[1], rep_len(.Object@pars.a,2)[1])
   fam2cont <- function(family) {
-    if (family %in% c("binom","nbinom","sample","poisson")) {
+    if (family %in% c("binom","nbinom","sample","poisson")) { # was poisson
       continuous = FALSE
     }
     else {
       if (family %in% c("gamma","beta","power")) {
         continuous = TRUE
       } else {  ### das sollte eigentlich nur geschehen wenn Wert nicht vorgegeben:
-         continuous = .Object@phis[[1]](u=0.5,s=0.9)>0  ## ob das so funktiooniert-....
+         continuous = .Object@phis[[1]](u=0.5,s=0.9)>0  ## ob das so funktiooniert-.... # NEIN:
+         # Warning in .Object@phis[[1]](u = 0.5, s = 0.9) :
+         #   non-integer value for s = 0.9
+         # Warning in min(x) : no non-missing arguments to min; returning Inf
+         # Warning in max(x) : no non-missing arguments to max; returning -Inf
+         # Warning in min(x) : no non-missing arguments to min; returning Inf
+         # Warning in max(x) : no non-missing arguments to max; returning -Inf
+         # Warning: Error in plot.window: endliche 'xlim' Werte nötig
        }
     }
     return(continuous)
@@ -611,7 +602,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     .Object@cdfappx= cdfapprox(.Object@alphsCDF)
   }
 
-  splineqt <- function(cdfappx) {
+  splineqt <- function(cdfappx) { # function only a stub? this returns a cdf, not a quantile function
     get.mimaq <- function(fun) {
       sequ.tails <- function(length.out=100) {
         s <- sort(unique(c(1*10^(-60:-3), seq(0,1,length.out=length.out) ,(1-1*10^(-60:-3)))))
@@ -658,6 +649,25 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   }
 
   if (!numericCDF) {
+    if (.Object@family == "power") {
+      fun_Ak <- function(s,beta_k) {
+        if(sum(beta_k<=2)>0) stop("beta_k must be >2") # < 2 geht doch auch? was ist mit=2?
+        ifelse(s<=0, 0, ifelse(s>=1,1,
+                               ((1-s)^beta_k-s^beta_k+beta_k*s-1) / (beta_k-2) ))
+      }
+      qfun_Ak <- function(p,beta_k, approxn=1000) {
+        xs <- seq(0,1,length.out=approxn)
+        ys <- fun_Ak(xs, beta_k=beta_k)
+        ifelse(p<0,0, ifelse(p>1,1, spline(ys,xs,xout=p)$y ))
+      }
+      wrapqf <- function(k) {
+        force(k) # hier nötig?
+        beta_k <- .Object@pars.a[k]
+        qf_Ak <- function(p, approxn=1000) qfun_Ak(p,beta_k,approxn)
+        return(qf_Ak)
+      }
+      .Object@alphsquantf <- lapply(1:.Object@dim, wrapqf)
+    } else
     .Object@alphsquantf = list(NULL)
   } else {
     .Object@alphsquantf = splineqt(.Object@cdfappx)
@@ -768,9 +778,10 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   # step 1 (select random pair of ranks)
   rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
   rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
-  # step 2 (urvs for each dimension/observation)
+  # step 2 (univariate rvs for each dimension/observation)
   usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
   # step 3
+  if (is.null(patchpar)) patchpar <- .Object@patchpar
   if (is.list(patchpar)) {
     par.m <- patchpar$m
     par.K <- patchpar$K
@@ -778,8 +789,6 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   }
   if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
-#  par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
-#  par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   switch(.Object@patch,#match.arg(.Object@patch),
   none = {Z <- (rsims-1.0)/par.m},
   rook = {Z <- (rsims-usims)/par.m},
@@ -792,7 +801,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                           )  },
   Gauss = {
     if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-    Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=obj@dim))  )/par.m})
+    Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
 
   if (TRUE | !numericCDF) {
@@ -817,8 +826,8 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     beta = {d<- exp(1-(1/Z)) },
      power = {
        d<-Z #dummy
-       d[,1] <- .Object@alphsquantf[[1]](Z[,1])
-       d[,2] <- .Object@alphsquantf[[2]](Z[,2])
+       for (j in 1:.Object@dim) d[,j] <- .Object@alphsquantf[[j]](Z[,j])
+   #    d[,2] <- .Object@alphsquantf[[2]](Z[,2])
        #thresh <- (1)/(1)
        #d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1
        },
@@ -838,13 +847,24 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               return( apply(d,1:2,unif_i,partition=newpartition) )} ,
     gamma = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                           matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T),
-                          1+d))) },
+                          1+d))) }, #check paper, looks different
     beta = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                  2,
-                                 1/(1-ln(d))))) },
+                                 1/(1-log(d))))) }, # Error in ln: could not find function "ln" # replaced by log
     poisson = {return(1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                     shape=d+1,
-                                    rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))) } #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) }
+                                    rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))) }, #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) },
+    power = {
+
+        beta <- matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T)
+        smat <- d
+        umat <- matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim)
+        Fk <- function(s,beta) {ifelse(1<s,1,ifelse(s<0,0,(1-(1-s)^(beta-1)-s)/(1-s^(beta-1)-(1-s)^(beta-1))))}
+        cond <- umat<=Fk(smat,beta)
+      fcase1 <- function(s,u,beta) {1-( ((1-s)^(beta-1))/(  (1-s)^(beta-1) + u*(1-s^(beta-1)-(1-s)^(beta-1))) )^(1/(beta-2))  }
+      fcase2 <- function(s,u,beta) {  ( ((  s)^(beta-1))/(1-(1-s)^(beta-1) - u*(1-s^(beta-1)-(1-s)^(beta-1))) )^(1/(beta-2))  }
+        return(ifelse(umat>1|umat<0, 0, ifelse(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim)<=smat, fcase1(smat,umat,beta), fcase2(smat,umat,beta)) ))
+       }# experimental - mit sicherheit falsch
     )
   } else {
     #alternative numerically
