@@ -760,7 +760,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     switch(patch,
            none = {Z <- (rsims-1.0)/par.m},
            rook = {Z <- (rsims-usims)/par.m},
-           lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
+           lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
            uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
                          Z <- qbeta( usims,
@@ -771,6 +771,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
              if (is.numeric(patchpar)) par.rho=patchpar
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
              Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+    colnames(Z) <- colnames(.Object@ranks)
     return(Z)
   }
   #simulating: main function
@@ -790,7 +791,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   switch(.Object@patch,#match.arg(.Object@patch),
-  none = {Z <- (rsims-1.0)/par.m},
+  none = {Z <- (rsims-0.5)/par.m}, # korrektur oder fehlerschaffung? 0.5 statt 1
   rook = {Z <- (rsims-usims)/par.m},
   lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
   uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
@@ -811,22 +812,55 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     nbinom = {d<-floor(sweep(Z/(1-Z),2,.Object@pars.a,"*"))},
     sample = {
               rr<-t(matrixStats::colRanks(Z)-0.5)/dim(Z)[1]  # colRanks(Z)-0.5 wie oben mit stetigkeitskorrektur # var ranks # rel ranks
+              # oder ohne matrixstats:
+              #rr <- (apply(Z,2,rank)-0.5)/dim(Z)[1]
               foo <- function(rrx,n) {table(cut(rrx,breaks=seq(0,1,length.out=n+1), ordered_result=FALSE))}
-              print(.Object@pars.a) # our "n"; mv?
-              newpartition <- apply(rr,2,foo, n=.Object@pars.a)/dim(rr)[1]  # ^^verwendet f?r alle spaltengleichen parameter
-              newpartition <- apply(newpartition,2,cumsum)
-              p_index <- function(u,part) {      #  function f?r eine Zeile i von newppartition:
-              test<- matrix(t(u),dim(part)[1],dim(part)[2],TRUE)<part
-              test[which(!test)]<-NA
-              return(apply(test*part, 2, which.min))
-              }
-              d<-t(apply(Z,1,p_index,part=newpartition))
+              #print(.Object@pars.a) # our "n"; mv?
+              #newpartition <- apply(rr,2,foo, n=.Object@pars.a)/dim(rr)[1]
+              # ^^verwendet f?r alle spaltengleichen parameter
+#cat("newpart2") ; cat(.Object@pars.a)
+     #         newpartition2 <- sapply(1:dim(rr)[2], function(i) table(cut(rr[,i],breaks=seq(0,1,length.out=.Object@pars.a[i]+1), ordered_result=FALSE)) ) / dim(rr)[1] # nutze nur ersten par
+              # cat("np1") ; print(head(newpartition))
+              # print("np2"); print(head(newpartition2))
+              #
+              # newpartition <- apply(newpartition,2,cumsum)
+              # p_index <- function(u,part) {      #  function f?r eine Zeile i von newppartition:
+              # test<- matrix(t(u),dim(part)[1],dim(part)[2],TRUE)<part
+              # test[which(!test)]<-NA
+              # return(apply(test*part, 2, which.min))
+              # }
+              # d<-t(apply(Z,1,p_index,part=newpartition))
+
+
+              #dat <- PUcopula::stormflood
+              #m.par <- c(3,2)
+              # ranks
+              ranks <- apply(rsims,2,rank); ranks
+              rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
+            #  cat("relranks"); print(head(rel.ranks)); cat("rr"); print(head(rr)) ; cat("--")
+              #prop.table(table(cut(rel.ranks[,1], breaks=seq(0,1,length.out=m.par[1]+1), include.lowest=T)))
+              print("todo:"); print(dim(ranks)) ; print("--"); print(rel.ranks[,1]); print("--"); print(pars.a); print(paste("for i=",i))
+              sij <- lapply(1:dim(ranks)[2], function(i) cumsum(prop.table(table(cut(rel.ranks[,i], breaks=seq(0,1,length.out=.Object@pars.a[i]+1), include.lowest=T)))) )
+              # sij ist kein data.frame, wenn mpars sich unterscheiden
+              print("done")
+              print("sij[[1]]"); print(sij)
+              sij <- lapply(sij, function(x) c(0,x))
+           #   cat("sij"); print(head(sij)); cat("newpartition"); print(head(newpartition))
+print("sij[[1]]"); print(sij)
+              interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=sij[[i]], include.lowest=T))
+              d2 <- as.data.frame(lapply(interim, as.numeric))
+             # cat("d"); print(head(d));
+           #   cat("d2"); print(head(d2))#
+
+              d<-d2
               },
     gamma = {d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1  },
-    beta = {d<- exp(1-(1/Z)) },
+beta = {d<-floor(sweep(Z,2,.Object@pars.a,"*"))},
+    betaalt = {d<- exp(1-(1/Z)) },
      power = {
+       #cat("PWRSTEP4")
        d<-Z #dummy
-       for (j in 1:.Object@dim) d[,j] <- .Object@alphsquantf[[j]](Z[,j])
+       for (j in 1:.Object@dim) {cat(paste("for",j));d[,j] <- .Object@alphsquantf[[j]](Z[,j])}
    #    d[,2] <- .Object@alphsquantf[[2]](Z[,2])
        #thresh <- (1)/(1)
        #d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1
@@ -834,26 +868,32 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     poisson = {d<-floor(sweep(-log(1-Z),2,(log(.Object@pars.a+1)-log(.Object@pars.a)),"/"))} )
     #step 5
     switch(.Object@family,#match.arg(.Object@family),
-    binom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+    binom = {rslt <- qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
               d,
-              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d))},
-    nbinom = {return(qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d)},
+    nbinom = {rslt <-qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
               d+1,
-              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))} ,
-    sample = {  unif_i <- function(i,partition) {
-              npart<-rbind(0,partition)
-              return(runif(1,min=npart[i],max=npart[i+1]))
-              }
-              return( apply(d,1:2,unif_i,partition=newpartition) )} ,
-    gamma = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+              matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))} ,
+    sample = {
+      # unif_i <- function(i,partition) {
+      #         npart<-rbind(0,partition)
+      #         return(runif(1,min=npart[i],max=npart[i+1]))
+      #         }
+              #rslt <-  apply(d,1:2,unif_i,partition=newpartition)
+              rslt <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min=sij[[i]][d[[i]]], max=sij[[i]][d[[i]]+1])  ))
+              } ,
+    gamma = { rslt <- exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                           matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T),
-                          1+d))) }, #check paper, looks different
-    beta = { return(exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+                          1+d)) }, #check paper, looks different
+    beta = {rslt <-qbeta( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+                            d,
+                            matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d)} ,
+    betaalt = { rslt <- exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                  2,
-                                 1/(1-log(d))))) }, # Error in ln: could not find function "ln" # replaced by log
-    poisson = {return(1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
+                                 1/(1-log(d)))) }, # Error in ln: could not find function "ln" # replaced by log
+    poisson = {rslt <- 1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                     shape=d+1,
-                                    rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)))) }, #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) },
+                                    rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))) }, #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) },
     power = {
 
         beta <- matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T)
@@ -863,9 +903,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
         cond <- umat<=Fk(smat,beta)
       fcase1 <- function(s,u,beta) {1-( ((1-s)^(beta-1))/(  (1-s)^(beta-1) + u*(1-s^(beta-1)-(1-s)^(beta-1))) )^(1/(beta-2))  }
       fcase2 <- function(s,u,beta) {  ( ((  s)^(beta-1))/(1-(1-s)^(beta-1) - u*(1-s^(beta-1)-(1-s)^(beta-1))) )^(1/(beta-2))  }
-        return(ifelse(umat>1|umat<0, 0, ifelse(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim)<=smat, fcase1(smat,umat,beta), fcase2(smat,umat,beta)) ))
+      print("IFELSE")
+      rslt <- ifelse(umat>1|umat<0, 0, ifelse(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim)<=smat, fcase1(smat,umat,beta), fcase2(smat,umat,beta)) )
        }# experimental - mit sicherheit falsch
     )
+    colnames(rslt) <- colnames(.Object@ranks)
+    return(rslt)
   } else {
     #alternative numerically
     d <- Z # d <- matrix()
@@ -887,6 +930,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
       rs[j,i] <- smpl[length(smpl)]
     }
     #^^ ranks ist falsch hier?
+    colnames(rs) <- colnames(.Object@ranks)
     return(rs)
   }
 
