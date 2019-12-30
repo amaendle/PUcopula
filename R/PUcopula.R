@@ -839,7 +839,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
             #  cat("relranks"); print(head(rel.ranks)); cat("rr"); print(head(rr)) ; cat("--")
               #prop.table(table(cut(rel.ranks[,1], breaks=seq(0,1,length.out=m.par[1]+1), include.lowest=T)))
-              print("todo:"); print(dim(ranks)) ; print("--"); print(rel.ranks[,1]); print("--"); print(pars.a); print(paste("for i=",i))
+             # print("todo:"); print(dim(ranks)) ; print("--"); print(rel.ranks[,1]); print("--"); print(pars.a); #print(paste("for i=",i))
               sij <- lapply(1:dim(ranks)[2], function(i) cumsum(prop.table(table(cut(rel.ranks[,i], breaks=seq(0,1,length.out=.Object@pars.a[i]+1), include.lowest=T)))) )
               # sij ist kein data.frame, wenn mpars sich unterscheiden
               print("done")
