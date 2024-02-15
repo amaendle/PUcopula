@@ -279,7 +279,7 @@ PUCopula <- setClass("PUCopula",
 )
 
 #' @describeIn PUCopula initializes a PUcopula object
-setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
+setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta","power"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
   .Object@dim = dimension # Dimension der Copula
   .Object@family = family # welcher Copula-Typ
   .Object@par.factor = factor #parameter fuer unterteilung patchwork?
@@ -289,12 +289,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   .Object@data = data # Slot für Daten
   # Ränge berechnen sofern nicht vorhanden; ebenfalls relative Ränge
   if(length(.Object@ranks)==0) {
-    .Object@ranks <- as.matrix(apply(.Object@data,2,rank)/.Object@par.factor)
+    .Object@ranks <- as.matrix(apply(.Object@data,2,rank,na.last="keep")/.Object@par.factor)
     if(length(.Object@relRanks)==0) {
-      par.m <- dim(.Object@ranks)[1] # NULL?
+      par.m <- as.numeric(colSums(!is.na(.Object@data))) # dim(.Object@ranks)[1] # NULL?
       par.K <- dim(.Object@ranks)[1] # NULL?
       par.rho <- NULL
-      .Object@relRanks <- as.matrix(.Object@ranks/(1+par.m))
+      .Object@relRanks <- as.matrix(sweep(.Object@ranks,2,(1+par.m),"/")) # as.matrix(.Object@ranks/(1+par.m))
     }
   }
   # wenn Dimension nicht angegeben wurde (==0), lese Dimension aus .@ranks
@@ -476,6 +476,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     deffun <- function(i) {
       force(i)
       Vectorize(function(s) {
+        browser()
         #return(integrate(f=alphs[[i]], lower=0, upper=s, rel.tol = 1e-4)$value)  #int von 0 oder -Inf
         if (length(.Object@cdflim)>0) if (s>.Object@cdflim[[i]][2] & .Object@cdflim[[i]][2]<1e+100) {
           limup <- .Object@cdflim[[i]][2]
@@ -492,7 +493,9 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     cdfs <- lapply(1:length(alphs), deffun)
     return(cdfs)
   }
-  .Object@alphsCDF = alphs2cdfs(.Object@alphs) # problematisch für große werte...
+  .Object@alphsCDF = alphs2cdfs(.Object@alphs) # problematisch für große werte... #BROKEN?
+  #Error in if (s > .Object@cdflim[[i]][2] & .Object@cdflim[[i]][2] < 1e+100) { :
+  #argument is of length zero
 
   ## ^^ herausfinden ab welchem wert problematisch
   ## 1. startwert für optimierung bestimmen
@@ -755,22 +758,22 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
       par.K <- patchpar$K
       par.rho <- patchpar$rho
     }
-    if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+    if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) # dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     switch(patch,
-           none = {Z <- (rsims-1.0)/par.m},
-           rook = {Z <- (rsims-usims)/par.m},
-           lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
-           uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
+           none = {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, !!!!!!!!!!! cf. in rand we have .5 instead of 1...
+           rook = {Z <- sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
+           lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
+           uFrechet = {Z <- sweep((rsims-usims[,rep(1,.Object@dim)]),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
                          Z <- qbeta( usims,
                                     sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
-                                    sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
+                                    sweep(sweep(- par.K * (rsims - 1),2,par.K * par.m,"+"),1,J,"-") #sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
                                     )  },
            Gauss = {
              if (is.numeric(patchpar)) par.rho=patchpar
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-             Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+             Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
     colnames(Z) <- colnames(.Object@ranks)
     return(Z)
   }
@@ -788,21 +791,22 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     par.K <- patchpar$K
     par.rho <- patchpar$rho
   }
-  if (is.null(par.m)) par.m <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
+  if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) #dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   switch(.Object@patch,#match.arg(.Object@patch),
-  none = {Z <- (rsims-0.5)/par.m}, # korrektur oder fehlerschaffung? 0.5 statt 1
-  rook = {Z <- (rsims-usims)/par.m},
-  lFrechet = {Z <- cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
-  uFrechet = {Z <- (rsims-usims[,rep(1,.Object@dim)])/par.m},
+  none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, # korrektur oder fehlerschaffung? 0.5 statt 1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  rook = {Z <- sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
+  lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
+  uFrechet = {Z <- sweep((rsims-usims[,rep(1,.Object@dim)]),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
   Bernstein = { J <- floor(runif(n)*par.K)
                 Z <- qbeta( usims,
                             sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
-                            sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
+                            sweep(sweep(- par.K*(rsims-1),2,par.K*par.m,"+"),1,J,"-") #sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
                           )  },
   Gauss = {
     if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-    Z <- (rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+    Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
+              #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
 
   if (TRUE | !numericCDF) {
@@ -854,9 +858,9 @@ print("sij[[1]]"); print(sij)
 
               d<-d2
               },
-    gamma = {d<- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1  },
-beta = {d<-floor(sweep(Z,2,.Object@pars.a,"*"))},
-    betaalt = {d<- exp(1-(1/Z)) },
+    gamma   = {d <- 1/(1-sweep(Z,2,1/.Object@pars.a,"^"))-1  },
+    beta    = {d <- floor(sweep(Z,2,.Object@pars.a,"*"))},
+    betaalt = {d <- exp(1-(1/Z)) },
      power = {
        #cat("PWRSTEP4")
        d<-Z #dummy
@@ -890,7 +894,7 @@ beta = {d<-floor(sweep(Z,2,.Object@pars.a,"*"))},
                             matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE)-d)} ,
     betaalt = { rslt <- exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                  2,
-                                 1/(1-log(d)))) }, # Error in ln: could not find function "ln" # replaced by log
+                                 1/(1-log(d)))) }, ### REMOVE?
     poisson = {rslt <- 1-exp(-qgamma( matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                                     shape=d+1,
                                     rate=1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))) }, #scale=1/(1+matrix(.Object@pars.a+1,nrow=n,ncol=.Object@dim,byrow=TRUE))))) },
