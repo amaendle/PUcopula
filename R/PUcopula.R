@@ -746,11 +746,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     }
   }
   #simulating: patchwork simulation
-  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL){
+  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL, keep=NULL){
     # step 1
     rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
     rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
     obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
+    obj_ties[,keep] <- 0 # "keep" coloumns will not be smoothed
     rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
     # step 2
     usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
@@ -765,7 +766,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     switch(patch,
            none = {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, !!!!!!!!!!! cf. in rand we have .5 instead of 1...
            # rook has a new version that considers ties... do this for the other copula drivers, too!
-           rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
+           rook = {Z <- sweep((rsims-1+rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
            lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
            uFrechet = {Z <- sweep((rsims-usims[,rep(1,.Object@dim)]),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
@@ -781,11 +782,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     return(Z)
   }
   #simulating: main function
-  .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL) {
+  .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep=NULL) {
   # step 1 (select random pair of ranks)
   rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
   rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
   obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
+  obj_ties[,keep] <- 0 # "keep" coloumns will not be smoothed
   rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
   # step 2 (univariate rvs for each dimension/observation)
   usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
