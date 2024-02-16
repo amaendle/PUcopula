@@ -746,12 +746,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     }
   }
   #simulating: patchwork simulation
-  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL, keep=NULL){
+  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL){
     # step 1
     rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
     rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
     obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
-    obj_ties[,keep] <- 0 # "keep" coloumns will not be smoothed
+    obj_ties[,keep_ties] <- 0 # "keep" coloumns will not be smoothed
     rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
     # step 2
     usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
@@ -782,12 +782,12 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     return(Z)
   }
   #simulating: main function
-  .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep=NULL) {
+  .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL, return_extra_objects=F) {
   # step 1 (select random pair of ranks)
   rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
   rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
   obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
-  obj_ties[,keep] <- 0 # "keep" coloumns will not be smoothed
+  obj_ties[,keep_ties] <- 0 # "keep" coloumns will not be smoothed
   rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
   # step 2 (univariate rvs for each dimension/observation)
   usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
@@ -920,7 +920,12 @@ print("sij[[1]]"); print(sij)
        }# experimental - mit sicherheit falsch
     )
     colnames(rslt) <- colnames(.Object@ranks)
-    return(rslt)
+
+    if (return_extra_objects) {
+      return(list(result=rslt, rsims=rsims, usims=usims, Z=Z, d=d))
+    }
+    else
+      return(rslt)
   } else {
     #alternative numerically
     d <- Z # d <- matrix()
@@ -942,8 +947,14 @@ print("sij[[1]]"); print(sij)
       rs[j,i] <- smpl[length(smpl)]
     }
     #^^ ranks ist falsch hier?
+
     colnames(rs) <- colnames(.Object@ranks)
-    return(rs)
+
+    if (return_extra_objects) {
+      return(list(result=rs, rsims=rsims, usims=usims, Z=Z, d=d))
+    }
+    else
+      return(rs)
   }
 
 }
