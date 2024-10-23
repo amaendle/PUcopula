@@ -1,0 +1,26 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: PUcopula
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - orcid: 'https://orcid.org/0000-0002-7205-4927'
+    affiliation: >-
+      Leibniz-Institut für Präventionsforschung und
+      Epidemiologie – BIPS GmbH
+    email: maendle@leibniz-bips.de
+    given-names: Andreas
+    family-names: Mändle
+repository-code: 'https://github.com/amaendle/PUcopula/'
+abstract: >-
+  Simulation of Partition-of-Unity copulas in R, e.g. for
+  the purpose of modeling risk or for the creation of
+  synthetic data based on restricted datasets.
+keywords:
+  - >-
+    partition-of-unity copula, multivariate distributions,
+    simulation
