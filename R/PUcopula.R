@@ -764,7 +764,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) # dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     switch(patch,
-           none = {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, !!!!!!!!!!! cf. in rand we have .5 instead of 1...
+           none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, 
            # rook has a new version that considers ties... do this for the other copula drivers, too!
            rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
            lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
@@ -801,7 +801,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) #dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
   switch(.Object@patch,#match.arg(.Object@patch),
-  none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, # korrektur oder fehlerschaffung? 0.5 statt 1 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, 
   #rook has a new tie conserving version, the others are still missing this
   rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
   lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
