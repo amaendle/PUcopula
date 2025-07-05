@@ -823,6 +823,9 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
     nbinom = {d<-floor(sweep(Z/(1-Z),2,.Object@pars.a,"*"))},
     sample = {
+              # smoothing parameter must exist for each dimension
+              if (length(.Object@pars.a)<dim(ranks)[2]) .Object@pars.a <- rep_len(.Object@pars.a,dim(ranks)[2])
+              if (max(.Object@pars.a ) > dim(ranks)[1]) warning("in order to create a valid sample copula pars.a must not be larger than the number of non-missing observations for each variable")
               rr<-t(matrixStats::colRanks(Z)-0.5)/dim(Z)[1]  # colRanks(Z)-0.5 wie oben mit stetigkeitskorrektur # var ranks # rel ranks
               # oder ohne matrixstats:
               #rr <- (apply(Z,2,rank)-0.5)/dim(Z)[1]
@@ -859,7 +862,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               sij <- lapply(sij, function(x) c(0,x))
            #   cat("sij"); print(head(sij)); cat("newpartition"); print(head(newpartition))
 print("sij[[1]]"); print(sij)
-              interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=sij[[i]], include.lowest=T))
+              interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
               d2 <- as.data.frame(lapply(interim, as.numeric))
              # cat("d"); print(head(d));
            #   cat("d2"); print(head(d2))#
@@ -892,7 +895,8 @@ print("sij[[1]]"); print(sij)
       #         return(runif(1,min=npart[i],max=npart[i+1]))
       #         }
               #rslt <-  apply(d,1:2,unif_i,partition=newpartition)
-              rslt <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min=sij[[i]][d[[i]]], max=sij[[i]][d[[i]]+1])  ))
+              rslt <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+          1])  ))
               } ,
     gamma = { rslt <- exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
                           matrix(.Object@pars.a,nrow=n,ncol=.Object@dim, byrow=T),
