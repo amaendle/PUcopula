@@ -770,6 +770,8 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            lFrechet = {Z <- sweep(cbind(rsims[,1]+0.5*rsims.ties-usims[,1]*rsims.ties,rsims[,2]+usims[,1]*rsims.ties-0.5*rsims.ties-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
            uFrechet = {Z <- sweep((rsims-0.5+0.5*rsims.ties-usims[,rep(1,.Object@dim)]*rsims.ties),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
+                        # adapt ranks: in case of ties, randomly choose a rank in the appropriate range instead of using the average rank
+                        rsims <- rsims-0.5 +0.5*rsims.ties - floor(new_usims*rsims.ties)
                          Z <- qbeta( usims,
                                     sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
                                     sweep(sweep(- par.K * (rsims - 1),2,par.K * par.m,"+"),1,J,"-") #sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
