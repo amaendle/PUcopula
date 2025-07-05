@@ -823,9 +823,6 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
     nbinom = {d<-floor(sweep(Z/(1-Z),2,.Object@pars.a,"*"))},
     sample = {
-              # smoothing parameter must exist for each dimension
-              if (length(.Object@pars.a)<dim(ranks)[2]) .Object@pars.a <- rep_len(.Object@pars.a,dim(ranks)[2])
-              if (max(.Object@pars.a ) > dim(ranks)[1]) warning("in order to create a valid sample copula pars.a must not be larger than the number of non-missing observations for each variable")
               rr<-t(matrixStats::colRanks(Z)-0.5)/dim(Z)[1]  # colRanks(Z)-0.5 wie oben mit stetigkeitskorrektur # var ranks # rel ranks
               # oder ohne matrixstats:
               #rr <- (apply(Z,2,rank)-0.5)/dim(Z)[1]
@@ -852,6 +849,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               # ranks
               ranks <- apply(rsims,2,rank); ranks
               rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
+      
+              # smoothing parameter must exist for each dimension
+              if (length(.Object@pars.a)<dim(ranks)[2]) .Object@pars.a <- rep_len(.Object@pars.a,dim(ranks)[2])
+              if (max(.Object@pars.a ) > dim(ranks)[1]) warning("in order to create a valid sample copula pars.a must not be larger than the number of non-missing observations for each variable")
+      
             #  cat("relranks"); print(head(rel.ranks)); cat("rr"); print(head(rr)) ; cat("--")
               #prop.table(table(cut(rel.ranks[,1], breaks=seq(0,1,length.out=m.par[1]+1), include.lowest=T)))
              # print("todo:"); print(dim(ranks)) ; print("--"); print(rel.ranks[,1]); print("--"); print(pars.a); #print(paste("for i=",i))
