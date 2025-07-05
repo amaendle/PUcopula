@@ -771,6 +771,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            uFrechet = {Z <- sweep((rsims-0.5+0.5*rsims.ties-usims[,rep(1,.Object@dim)]*rsims.ties),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
                         # create additional uniforms for tie correction
+                        new_usims <- matrix(runif(.Object@dim * n), nrow = n, ncol = .Object@dim)
                         # adapt ranks: in case of ties, randomly choose a rank in the appropriate range instead of using the average rank
                         rsims <- rsims-0.5 +0.5*rsims.ties - floor(new_usims*rsims.ties)
                          Z <- qbeta( usims,
