@@ -767,8 +767,8 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, 
            # rook has a new version that considers ties... do this for the other copula drivers, too!
            rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
-           lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
-           uFrechet = {Z <- sweep((rsims-usims[,rep(1,.Object@dim)]),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
+           lFrechet = {Z <- sweep(cbind(rsims[,1]+0.5*rsims.ties-usims[,1]*rsims.ties,rsims[,2]+usims[,1]*rsims.ties-0.5*rsims.ties-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
+           uFrechet = {Z <- sweep((rsims+0.5*rsims.ties-usims[,rep(1,.Object@dim)]*rsims.ties),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
                          Z <- qbeta( usims,
                                     sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
@@ -777,7 +777,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            Gauss = {
              if (is.numeric(patchpar)) par.rho=patchpar
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-             Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+             Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
     colnames(Z) <- colnames(.Object@ranks)
     return(Z)
   }
