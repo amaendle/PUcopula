@@ -798,7 +798,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               sij <- lapply(sij, function(x) c(0,x))
               interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
               d <- as.data.frame(lapply(interim, as.numeric))
-              Z <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+              Z <- as.matrix(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
               1])  ))
            }) 
     colnames(Z) <- colnames(.Object@ranks)
@@ -852,7 +852,7 @@ sample = {
               sij <- lapply(sij, function(x) c(0,x))
               interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
               d <- as.data.frame(lapply(interim, as.numeric))
-              Z <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+              Z <- as.matrix(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
               1])  ))
            }
             ) 
