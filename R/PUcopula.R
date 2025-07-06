@@ -279,7 +279,7 @@ PUCopula <- setClass("PUCopula",
 )
 
 #' @describeIn PUCopula initializes a PUcopula object
-setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta","power"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
+setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta","power"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss","sample"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
   .Object@dim = dimension # Dimension der Copula
   .Object@family = family # welcher Copula-Typ
   .Object@par.factor = factor #parameter fuer unterteilung patchwork?
@@ -756,6 +756,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     # step 2
     usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
     # step 3
+    if (is.null(patchpar)) patchpar <- .Object@patchpar
     if (is.list(patchpar)) {
       par.m <- patchpar$m
       par.K <- patchpar$K
@@ -783,7 +784,23 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
              tryCatch( norm_cop <- copula::normalCopula(par.rho, dim = .Object@dim), 
                       error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter par_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
-             Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+             Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")},  
+           sample = {
+             ranks <- apply(rsims,2,rank); ranks
+              rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
+  
+              # smoothing parameter must exist for each dimension
+              if (length(.Object@pars.a)<dim(ranks)[2]) .Object@pars.a <- rep_len(.Object@pars.a,dim(ranks)[2])
+              if (max(.Object@pars.a ) > dim(ranks)[1]) warning("in order to create a valid sample copula pars.a must not be larger than the number of non-missing observations for each variable")
+                
+              sij <- lapply(1:dim(ranks)[2], function(i) cumsum(prop.table(table(cut(rel.ranks[,i], breaks=seq(0,1,length.out=.Object@pars.a[i]+1), include.lowest=T)))) )
+              # sij ist kein data.frame, wenn mpars sich unterscheiden
+              sij <- lapply(sij, function(x) c(0,x))
+              interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
+              d <- as.data.frame(lapply(interim, as.numeric))
+              Z <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+              1])  ))
+           }) 
     colnames(Z) <- colnames(.Object@ranks)
     return(Z)
   }
