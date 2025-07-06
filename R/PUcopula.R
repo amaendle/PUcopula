@@ -781,7 +781,9 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            Gauss = {
              if (is.numeric(patchpar)) par.rho=patchpar
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-             Z <- sweep((rsims-0.5+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
+             tryCatch( norm_cop <- copula::normalCopula(par.rho, dim = .Object@dim), 
+                      error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter pat_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
+             Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")}) #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
     colnames(Z) <- colnames(.Object@ranks)
     return(Z)
   }
@@ -817,7 +819,10 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                           )  },
   Gauss = {
     if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-    Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
+    tryCatch( norm_cop <- copula::normalCopula(par.rho, 
+                                        dim = .Object@dim), error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter pat_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
+    Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")}) 
+    #Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
               #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
 
