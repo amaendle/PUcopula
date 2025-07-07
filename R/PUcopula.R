@@ -790,10 +790,10 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
   
               # smoothing parameter must exist for each dimension
-              if (length(par.m)<dim(ranks)[2]) par.m <- rep_len(par.m,dim(ranks)[2])
-              if (max(par.m ) > dim(ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
+              if (length(par.m)<dim(.Object@ranks)[2]) par.m <- rep_len(par.m,dim(.Object@ranks)[2])
+              if (max(par.m ) > dim(.Object@ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
                 
-              sij <- lapply(1:dim(ranks)[2], function(i) cumsum(prop.table(table(cut(rel.ranks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
+              sij <- lapply(1:dim(.Object@ranks)[2], function(i) cumsum(prop.table(table(cut(.Object@relRanks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
               # sij ist kein data.frame, wenn mpars sich unterscheiden
               sij <- lapply(sij, function(x) c(0,x))
               interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
@@ -844,10 +844,10 @@ sample = {
               rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
   
               # smoothing parameter must exist for each dimension
-              if (length(par.m)<dim(ranks)[2]) par.m <- rep_len(par.m,dim(ranks)[2])
-              if (max(par.m ) > dim(ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
+              if (length(par.m)<dim(.Object@ranks)[2]) par.m <- rep_len(par.m,dim(.Object@ranks)[2])
+              if (max(par.m ) > dim(.Object@ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
                 
-              sij <- lapply(1:dim(ranks)[2], function(i) cumsum(prop.table(table(cut(rel.ranks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
+              sij <- lapply(1:dim(.Object@ranks)[2], function(i) cumsum(prop.table(table(cut(.Object@relRanks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
               # sij ist kein data.frame, wenn mpars sich unterscheiden
               sij <- lapply(sij, function(x) c(0,x))
               interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
