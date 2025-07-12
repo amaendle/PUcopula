@@ -842,6 +842,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
               #dat <- PUcopula::stormflood
               #m.par <- c(3,2)
               # ranks
+                       rsims <- Z #???check sample copula formulas again
               ranks <- apply(rsims,2,rank); ranks
               rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
       
