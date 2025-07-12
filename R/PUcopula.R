@@ -768,7 +768,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, 
            # rook has a new version that considers ties... do this for the other copula drivers, too!
            rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
-           lFrechet = {Z <- sweep(cbind(rsims[,1]+0.5*rsims.ties-usims[,1]*rsims.ties,rsims[,2]+usims[,1]*rsims.ties-0.5*rsims.ties-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
+           lFrechet = {Z <- sweep(cbind(rsims[,1]+0.5*rsims.ties[,1]-usims[,1]*rsims.ties[,1],rsims[,2]+usims[,1]*rsims.ties[,2]-0.5*rsims.ties[,2]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
            uFrechet = {Z <- sweep((rsims-0.5+0.5*rsims.ties-usims[,rep(1,.Object@dim)]*rsims.ties),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
            Bernstein = { J <- floor(runif(n)*par.K)
                         # create additional uniforms for tie correction
@@ -806,56 +806,8 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   }
   #simulating: main function
   .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL, return_extra_objects=F) {
-  # step 1 (select random pair of ranks)
-  rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
-  rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
-  obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
-  obj_ties[,keep_ties] <- 0 # "keep" coloumns will not be smoothed
-  rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
-  # step 2 (univariate rvs for each dimension/observation)
-  usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
-  # step 3
-  if (is.null(patchpar)) patchpar <- .Object@patchpar
-  if (is.list(patchpar)) {
-    par.m <- patchpar$m
-    par.K <- patchpar$K
-    par.rho <- patchpar$rho
-  }
-  if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) #dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
-  if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
-  switch(.Object@patch,#match.arg(.Object@patch),
-  none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, 
-  #rook has a new tie conserving version, the others are still missing this
-  rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
-  lFrechet = {Z <- sweep(cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2
-  uFrechet = {Z <- sweep((rsims-usims[,rep(1,.Object@dim)]),2,par.m,"/")}, #(rsims-usims[,rep(1,.Object@dim)])/par.m},
-  Bernstein = { J <- floor(runif(n)*par.K)
-                Z <- qbeta( usims,
-                            sweep(par.K*(rsims-1)+1,1,J,"+"), #par.K*rsims+J+1,
-                            sweep(sweep(- par.K*(rsims-1),2,par.K*par.m,"+"),1,J,"-") #sweep(par.K*par.m-par.K*(rsims-1),1,J,"-") #matrix(par.K*par.m-par.K*rsims-J,nrow=n,ncol=.Object@dim,byrow=TRUE)
-                          )  },
-  Gauss = {
-    if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-    tryCatch( norm_cop <- copula::normalCopula(par.rho, 
-                                        dim = .Object@dim), error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter par_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
-    Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")},
-sample = {
-             ranks <- apply(rsims,2,rank)
-              rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
-  
-              # smoothing parameter must exist for each dimension
-              if (length(par.m)<dim(.Object@ranks)[2]) par.m <- rep_len(par.m,dim(.Object@ranks)[2])
-              if (max(par.m ) > dim(.Object@ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
-                
-              sij <- lapply(1:dim(.Object@ranks)[2], function(i) cumsum(prop.table(table(cut(.Object@relRanks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
-              # sij ist kein data.frame, wenn mpars sich unterscheiden
-              sij <- lapply(sij, function(x) c(0,x))
-              interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
-              d <- as.data.frame(lapply(interim, as.numeric))
-              Z <- as.matrix(as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
-              1])  )))
-           }
-            ) 
+    # step 1-3
+     .Object@rpatch(n, patch, patchpar, keep_ties)
     #Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
               #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
