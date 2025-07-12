@@ -807,7 +807,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
   #simulating: main function
   .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL, return_extra_objects=F) {
     # step 1-3
-     .Object@rpatch(n, patch, patchpar, keep_ties)
+    Z <- .Object@rpatch(n, patch, patchpar, keep_ties)
     #Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
               #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
