@@ -786,8 +786,10 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                       error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter par_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
              Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")},  
            sample = {
-             ranks <- apply(rsims,2,rank)
-              rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
+             #ranks <- apply(rsims,2,rank)
+             ranks <- rsims # experimental fix
+              #rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
+             rel.ranks <- as.matrix(.Object@relRanks[rsims.index,,drop=FALSE]) # experimental fix
   
               # smoothing parameter must exist for each dimension
               if (length(par.m)<dim(.Object@ranks)[2]) par.m <- rep_len(par.m,dim(.Object@ranks)[2])
