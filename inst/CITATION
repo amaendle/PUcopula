@@ -1,0 +1,24 @@
+citHeader("To cite package 'PUcopula' in publications use:")
+
+citEntry(
+  entry = "Manual",
+  title = "PUcopula: Simulation of Partition-of-Unity Copulas in R",
+  author = personList(
+    person(
+      given = "Andreas",
+      family = "Mändle",
+      email = "maendle@leibniz-bips.de",
+      comment = c(ORCID = "0000-0002-7205-4927")
+    )
+  ),
+  year = format(Sys.Date(), "%Y"),
+  note = "R package",
+  url = "https://github.com/amaendle/PUcopula/",
+  textVersion = paste(
+    "Mändle, Andreas.",
+    sprintf("(%s).", format(Sys.Date(), "%Y")),
+    "PUcopula: Simulation of Partition-of-Unity Copulas in R.",
+    "R package.",
+    "https://github.com/amaendle/PUcopula/"
+  )
+)

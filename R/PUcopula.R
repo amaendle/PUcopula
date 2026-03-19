@@ -111,33 +111,69 @@ NULL
   return(tail(theta,1))
 }
 
-#' An S4 class to represent a partition of unity copula.
+#' S4 class representing a partition of unity copula
 #'
-#' @slot dim A length-one numeric vector; dimension of PU-copula
-#' @slot family Character or vector of characters: family determining the desnities fdens
-#' @slot par.factor A length-n numeric vector
-#' @slot pars.a A length-one numeric vector: defined as integral from 0 to 1 over phi(s,u) for s in r. Will be evauated numerically
-#' @slot patchpar A list containing parameters for the copula driver, e.g. rho in case of Gauss, K,m in case of Bernstein,...
-#' @slot p A length-one numeric vector
-#' @slot phis A list of functions \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
+#' The \code{PUCopula} class implements partition-of-unity copulas as
+#' developed in Pfeifer et al. (2016, 2017, 2019). It provides a
+#' framework for constructing copulas using general partitions of unity,
+#' including both discrete and continuous cases.
+#'
+#' @references
+#' Pfeifer, D., Tsatedem, H. A., Mändle, A., and Girschig, C. (2016).
+#' New copulas based on general partitions-of-unity and their applications
+#' to risk management. \emph{Dependence Modeling}, 4(1).
+#' \doi{10.1515/demo-2016-0006}
+#'
+#' Pfeifer, D., Mändle, A., and Ragulina, O. (2017).
+#' New copulas based on general partitions-of-unity and their applications
+#' to risk management (part II). \emph{Dependence Modeling}, 5(1), 246--255.
+#' \doi{10.1515/demo-2017-0014}
+#'
+#' Pfeifer, D., Mändle, A., Ragulina, O., and Girschig, C. (2019).
+#' New copulas based on general partitions-of-unity (part III) ---
+#' the continuous case. \emph{Dependence Modeling}, 7(1), 181--201.
+#' \doi{10.1515/demo-2019-0009}
+#'
+#' @slot dim Numeric scalar. Dimension of the copula.
+#' @slot family Character vector. Specifies the family of the PU copula. (and therefore the densities \code{fdenss})
+#' @slot par.factor Numeric vector. Scaling parameter for ranks.
+#' @slot pars.a Numeric vector. Parameters controlling the distribution of \eqn{\varphi}....
+#' @slot patchpar List. Parameters for the copula driver, e.g. rho in case of Gauss copula driver, K,m in case of Bernstein,...
+#' @slot p Matrix. Internal parameter representation.
+#' @slot phi Function. Base density \eqn{\varphi(u, s)}.... (obsolete due to phis)
+#' @slot psy Function. Secondary density function....  (obsolete due to phis)
+#' @slot phis List of functions. Collection of component densities.... \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
 #'       \deqn{\varphi_k(s,u)\geq 0 \text{ and } \int_{-\infty}^\infty \varphi_k(s,u)\, ds = 1 \text{ for } u \in (0,1),}{phi_k(s,u) \geq 0 and \int phi_k(s,u), ds = 1 for u in (0,1),}
 #'       Or (discrete case): A list of functions which represent discrete probabilities over Z+ with a parameter u in (0,1).
-#' @slot alphs A list of functions. Integral over the elements of phis w.r.t. u, i.e. \deqn{\alpha_k(s):=\int_0^1 \varphi_k(s,u)\, du \in (0,\infty)}{alpha_k(s):=int_0^1 phi_k(s,u) du in (0,\infty)}
-#' @slot alphsCDF A list of functions. CDFs corresponding to the densities defined by alphs, i.e. \deqn{A_k(s) := \int_{-\infty}^s \alpha_k(w) \, dw \text{ for } s \in R}{A_k(s) := int_-\infty^s alpha_k(w) dw for s in R}
-#' @slot fdenss A list of functions. Densities obtained from normalizing the functions \eqn{\varphi(s,u)}{phi(s,u)} (from slot phis) w.r.t. \eqn{u \in 0,1}{u in (0,1)}, i.e. \deqn{f_k(s,u) := \frac{\varphi_k(s,u)}{\alpha_k(s)}, \, u \in (0,1) \text{ for } s \in R}{f_k(s,u) := phi_k(s,u)/alpha_k(s), u in (0,1) for s in R}
-#' @slot PUdens density function of the (continuous) partition of unity copula defined by  \deqn{c(\mathbf{u}) := \int_{-\infty}^\infty \cdots \int_{-\infty}^\infty p(s_1,\cdots,s_d) \prod_{k=1}^d f_k(s_k, u_k) \, ds_1 \cdots ds_d, \mathbf{u} = (u_1,\cdots,u_d) \in (0,1)^d }{c(u) := int ... int p(s_1,...,s_d) \prod_k=1^d f_k(s_k, u_k) ds_1 ... ds_d, u = (u_1,...,u_d) in (0,1)^d }
+#' @slot continuous Logical vector. Indicates whether components are continuous....
+#' @slot alph Function. Integral of \eqn{\varphi}....
+#' @slot beta Function. Integral of \eqn{\psi}....
+#' @slot alphs List of functions. Marginal densities.... Integral over the elements of phis w.r.t. u, i.e. \deqn{\alpha_k(s):=\int_0^1 \varphi_k(s,u)\, du \in (0,\infty)}{alpha_k(s):=int_0^1 phi_k(s,u) du in (0,\infty)}
+#' @slot alphsCDF List of functions. CDFs corresponding to densities \code{alphs}, i.e. \deqn{A_k(s) := \int_{-\infty}^s \alpha_k(w) \, dw \text{ for } s \in R}{A_k(s) := int_-\infty^s alpha_k(w) dw for s in R}
+#' @slot opstart List. Starting values for optimization....
+#' @slot cdflim List. Limits for numerically stable CDF evaluation....
+#' @slot cdfdom List. Effective domain of the CDFs....
+#' @slot alphsquantf List. Fast quantile approximations....
+#' @slot cdfappx List. Approximate CDF functions....
+#' @slot alphsobjective List. Objective functions for quantiles....
+#' @slot alphsquant List. Quantile functions....
+#' @slot fdens Function. Density function.... (obsolete due to fdenss)
+#' @slot gdens Function. Secondary density.... (obsolete due to fdenss)
+#' @slot fdenss List of functions. Contains densities obtained from normalizing the functions \eqn{\varphi(s,u)}{phi(s,u)} (from slot phis) w.r.t. \eqn{u \in 0,1}{u in (0,1)}, i.e. \deqn{f_k(s,u) := \frac{\varphi_k(s,u)}{\alpha_k(s)}, \, u \in (0,1) \text{ for } s \in R}{f_k(s,u) := phi_k(s,u)/alpha_k(s), u in (0,1) for s in R}
+#' @slot cpatch Function. Copula driver density....
+#' @slot PUdens Function. Density of the (continuous) PU copula defined by  \deqn{c(\mathbf{u}) := \int_{-\infty}^\infty \cdots \int_{-\infty}^\infty p(s_1,\cdots,s_d) \prod_{k=1}^d f_k(s_k, u_k) \, ds_1 \cdots ds_d, \mathbf{u} = (u_1,\cdots,u_d) \in (0,1)^d }{c(u) := int ... int p(s_1,...,s_d) \prod_k=1^d f_k(s_k, u_k) ds_1 ... ds_d, u = (u_1,...,u_d) in (0,1)^d }
 #'       where \eqn{p(s_1,\cdots,s_d)}{p(s_1,...,s_d)} denotes the density of an arbitrary \eqn{d}-dimensional random vector \eqn{\mathbf{S}=S_1,\cdots,S_d)}{S=S_1,...,S_d)} over \eqn{R^d} with marginal densities \eqn{\alpha(cdot)}{alpha_k(.)} for \eqn{S_k}.
-#' @slot fq A length-one numeric vector
-#' @slot gq A length-one numeric vector
-#' @slot patch A length-one numeric vector
-#' @slot data A length-one numeric vector
-#' @slot ranks A length-one numeric vector
-#' @slot relRanks A length-one numeric vector
-#' @slot rpatch A function which generates random samples from the specified patchwork.
-#' @slot patchpar Parameter for the chosen patchwork type (used currently for type Gauss)
-#' @slot rand random number generator to simulate from PU copula
+#' @slot fq Function. Auxiliary function.
+#' @slot gq Function. Auxiliary function.
+#' @slot patch Character. Patchwork type.
+#' @slot dPWork Function. Patchwork density....
+#' @slot data Matrix. Input data.
+#' @slot ranks Matrix. Rank-transformed data.
+#' @slot relRanks Matrix. Relative ranks.
+#' @slot rpatch Function. Patchwork sampler - generates random samples from the specified patchwork.
+#' @slot rand Function. Random number generator to simulate from PU copula.
 #'
-#' @return An object of class PUcopula
+#' @return An object of class \code{PUCopula}.
 #'
 #' @examples
 #' # Use dataset stormflood
@@ -155,7 +191,11 @@ NULL
 #' # plot the lower Fréchet driver, i.e. phi=-1
 #' plot(x@rpatch(2000,"lFrechet"), sub="lower Fréchet driver, phi=-1", xlab="", ylab="")
 #' # plot for phi=-0.8
-#' plot(x@rpatch(2000,"Bernstein",list(m=20,K=20)), sub="Bernstein copula, m=20, K=20", xlab="", ylab="")
+#' plot(
+#'   x@rpatch(2000,"Bernstein",list(m=20,K=20)),
+#'   sub="Bernstein copula, m=20, K=20",
+#'   xlab="", ylab=""
+#' )
 #' # plot for phi=0 (rook copula)
 #' plot(x@rpatch(2000,"rook"), sub="rook copula, phi=0", xlab="", ylab="")
 #' # plot for phi=0.9
@@ -173,7 +213,12 @@ NULL
 #' foo <- function(u) x@phi(u,1)
 #' ys=foo(xs)
 #' # plot for s=1
-#' plot(x=xs,y=ys, col=1, ylim=c(0,0.4), xlim=c(0,1),type = "l") #plot(foo, col=1, ylim=c(0,0.94), xlim=c(0,1)) # ylim=c(0,1e-88)
+#' plot(
+#'   x=xs,y=ys,
+#'   col=1,
+#'   ylim=c(0,0.4), xlim=c(0,1),
+#'   type = "l"
+#' ) #plot(foo, col=1, ylim=c(0,0.94), xlim=c(0,1)) # ylim=c(0,1e-88)
 #' # repeat for  s=3,5,7,...,999
 #' for (i in 2:500) {
 #'   foo <- function(u) x@phi(u,i*2-1)
@@ -182,7 +227,9 @@ NULL
 #' }
 #' # for a Gamma PUC the alphs are densities of inverse Pareto distributions...
 #' plot(x@alphs[[1]], xlim=c(0,500))
-#' # the fdenss are basically a normalization of the phis using alphs - for a fixes s they are densities of exponentially transformed Gamma distributions
+#' # the fdenss are basically a normalization of the phis using alphs
+#' # for a fixes s they are densities of exponentially transformed
+#' # Gamma distributions
 #' # heatplot:
 #' us <- seq(0,1,length.out=100)
 #' ss <- seq(1,500,length.out=100)
@@ -190,12 +237,70 @@ NULL
 #' for (s in 1:length(ss)) zs[,s] <- x@fdenss[[1]](us, s)
 #' image(x=us, y=ss, z=zs, col=terrain.colors(15))
 #'
-#' #For the simulation from the Gamma copula, the slots alphsCDF and Qk/corresponnding quantile are used internally
+#' # For the simulation from the Gamma copula, the slots alphsCDF
+#' # and Qk/corresponding quantile are used internally
 #' # plot the CDF corresponding to density alphs[1]
+#' \dontrun{
+#' x <- PUCopula(family="gamma", pars.a=c(40, 43), patch="lFrechet",data=stormflood, numericCDF=TRUE)
+#'
+#' warnings()
+#' # Warning messages:
+#' #   1: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 2: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 3: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 4: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 5: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 6: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 7: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 8: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 9: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 10: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 11: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 12: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 13: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 14: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 15: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 16: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 17: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 18: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 19: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 20: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 21: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 22: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 23: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 24: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 25: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 26: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 27: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 28: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 29: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 30: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 31: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 32: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 33: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 34: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 35: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 36: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 37: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 38: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+#' # 39: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 40: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 41: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 42: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 43: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 44: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 45: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 46: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 47: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 48: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 49: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#' # 50: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+#'
 #' plot(x@alphsCDF[[1]],xlim=c(0,100))
 #' x@alphsobjective[[1]](5,0.8)
 #' x@alphsquant[[1]](0.8)
 #' x@rand(1)
+#' }
 #'
 #' # Create a beta copula
 #' x <- PUCopula(family="beta", pars.a=c(40, 43), patch="lFrechet",data=stormflood)
@@ -229,7 +334,8 @@ NULL
 #' #[1] 6.530307e-06
 #' x@pars.a[1]*s^(x@pars.a[1]-1)/((1+s)^(x@pars.a[1]+1))
 #' #[1] 6.530261e-06
-PUCopula <- setClass("PUCopula",
+#' @exportClass PUCopula
+setClass("PUCopula",
                      slots = c(
                        dim = "numeric",
                        family = "character",
@@ -278,7 +384,62 @@ PUCopula <- setClass("PUCopula",
                      #},
 )
 
-#' @describeIn PUCopula initializes a PUcopula object
+#' Create a PUCopula object
+#'
+#' Constructs an object of class \code{PUCopula}. This is the main
+#' user-facing function for creating partition of unity copulas.
+#'
+#' @param dim Integer. Dimension of the copula. If 0, it is inferred from \code{data}.
+#' @param family Character vector specifying the copula family.
+#'   Possible values include \code{"binom"}, \code{"nbinom"}, \code{"poisson"},
+#'   \code{"sample"}, \code{"gamma"}, \code{"beta"}, \code{"power"}.
+#' @param pars.a Numeric vector of parameters controlling the family.
+#' @param patch Character. Patchwork type, e.g.
+#'   \code{"rook"}, \code{"uFrechet"}, \code{"lFrechet"},
+#'   \code{"Bernstein"}, \code{"Gauss"}, \code{"sample"}, \code{"varwc"}.
+#' @param patchpar List. Parameters for the patchwork (e.g., correlation for Gaussian copula).
+#' @param data Matrix. Input data used to construct the copula.
+#' @param numericCDF Logical. Whether to use numerical CDF approximations.
+#'
+#' @return An object of class \code{PUCopula}.
+#'
+#' @examples
+#' data(stormflood)
+#'
+#' x <- PUCopula(
+#'   family = "gamma",
+#'   pars.a = c(40, 43),
+#'   patch = "lFrechet",
+#'   data = stormflood
+#' )
+#'
+#' plot(x@ranks)
+#'
+#' @importFrom matrixStats colRanks
+#' @importFrom pracma integral
+#' @export
+PUCopula <- function(dim=0,
+                     family=c("binom","nbinom","poisson","sample","gamma","beta","power"),
+                     pars.a=c(10,10),
+                     patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss","sample"),
+                     patchpar=list(NULL),
+                     data,
+                     numericCDF=FALSE) {
+
+  methods::new("PUCopula",
+               dimension=dim,
+               factor=1,   # Scaling factor used in rank computation.
+               family=family,
+               pars.a=pars.a,
+               patch=patch,
+               patchpar=patchpar,
+               data=data,
+               continuous=logical(0),
+               numericCDF=numericCDF)
+}
+
+#' @keywords internal
+#' @noRd
 setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, family=c("binom","nbinom","poisson","sample","gamma","beta","power"), pars.a=c(10,10), patch=c("rook","uFrechet","lFrechet","varwc","Bernstein","Gauss","sample"), patchpar=list(NULL), data, continuous=logical(0), numericCDF  = FALSE) {
   .Object@dim = dimension # Dimension der Copula
   .Object@family = family # welcher Copula-Typ
@@ -476,9 +637,9 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     deffun <- function(i) {
       force(i)
       Vectorize(function(s) {
-        browser()
+        #browser()
         #return(integrate(f=alphs[[i]], lower=0, upper=s, rel.tol = 1e-4)$value)  #int von 0 oder -Inf
-        if (length(.Object@cdflim)>0) if (s>.Object@cdflim[[i]][2] & .Object@cdflim[[i]][2]<1e+100) {
+        if ((length(.Object@cdflim)>=i) && !is.null(.Object@cdflim[[i]]) && length(.Object@cdflim[[i]])>0) if (s>.Object@cdflim[[i]][2] & .Object@cdflim[[i]][2]<1e+100) {
           limup <- .Object@cdflim[[i]][2]
           return(s/(s+((limup/.Object@alphsCDF[[i]](limup))-limup)))
         } #else{
@@ -742,16 +903,16 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     k<-which(getpatch==1)
     if (length(k)==0) return(0)
     else {
-      return(copula::dCopula(c(n*u-x@ranks[k,1]+1,n*v-x@ranks[k,2]+1),copula::normalCopula(0.8, dim=2)) )
+      return(copula::dCopula(c(n*u-.Object@ranks[k,1]+1,n*v-.Object@ranks[k,2]+1),copula::normalCopula(0.8, dim=2)) )
     }
   }
   #simulating: patchwork simulation
-  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL){
+  .Object@rpatch = function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL, return_extra_objects=FALSE){
     # step 1
     rsims.index <- ceiling(runif(n)*dim(.Object@ranks)[1])
     rsims <- as.matrix(.Object@ranks[rsims.index,,drop=FALSE])
     obj_ties <- apply(.Object@ranks,2, function(x) { ave(x,x,FUN=length) })
-    obj_ties[,keep_ties] <- 0 # "keep" coloumns will not be smoothed
+    obj_ties[,keep_ties] <- 0 # "keep" columns will not be smoothed
     rsims.ties <- as.matrix(obj_ties[rsims.index,,drop=FALSE])
     # step 2
     usims <- matrix(runif(.Object@dim*n),nrow=n,ncol=.Object@dim)
@@ -765,7 +926,7 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
     if (is.null(par.m)) par.m <- as.numeric(colSums(!is.na(.Object@ranks))) # dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     if (is.null(par.K)) par.K <- dim(.Object@ranks)[1] # Anz Zeilen/Beobachtungen , für bernstein übergeben?
     switch(patch,
-           none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m}, 
+           none = {Z <- sweep((rsims-0.5),2,par.m,"/")}, #(rsims-0.5)/par.m}, {Z <- sweep((rsims-1.0),2,par.m,"/")}, # (rsims-1.0)/par.m},
            # rook has a new version that considers ties... do this for the other copula drivers, too!
            rook = {Z <- sweep((rsims-0.5+0.5*rsims.ties - usims*rsims.ties), 2, par.m, "/")}, #sweep((rsims-usims),2,par.m,"/")}, #(rsims-usims)/par.m},
            lFrechet = {Z <- sweep(cbind(rsims[,1]+0.5*rsims.ties[,1]-usims[,1]*rsims.ties[,1],rsims[,2]+usims[,1]*rsims.ties[,2]-0.5*rsims.ties[,2]-1),2,par.m,"/")}, #cbind(rsims[,1]-usims[,1],rsims[,2]+usims[,1]-1)/par.m}, #nur dim 2 !!!returned as other type of objet due to cbind!!!!!
@@ -782,39 +943,49 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
            Gauss = {
              if (is.numeric(patchpar)) par.rho=patchpar
              if (is.null(par.rho)) warning("patchpar$rho must not be NULL when patch is Gauss")
-             tryCatch( norm_cop <- copula::normalCopula(par.rho, dim = .Object@dim), 
+             if (!require(copula)) stop("The package copula is required for using of the Gauss copula driver, but it is not installed.")
+             tryCatch( norm_cop <- copula::normalCopula(par.rho, dim = .Object@dim),
                       error = function(e) stop(paste0("Gauss copula driver cannot be created for your chosen parameter par_rho=",par.rho,". Adapt the value to ensure a positive semidefinite correlation matrix.")))
-             Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")},  
+             Z <- sweep((rsims-0.5+copula::rCopula(n,norm_cop)*rsims.ties-0.5*rsims.ties  ),2,par.m,"/")},
            sample = {
              #ranks <- apply(rsims,2,rank)
              ranks <- rsims # experimental fix
               #rel.ranks <- (ranks-0.5)/dim(ranks)[1] #mit stetigkeitskorrektur
              rel.ranks <- as.matrix(.Object@relRanks[rsims.index,,drop=FALSE]) # experimental fix
-  
+
               # smoothing parameter must exist for each dimension
               if (length(par.m)<dim(.Object@ranks)[2]) par.m <- rep_len(par.m,dim(.Object@ranks)[2])
               if (max(par.m ) > dim(.Object@ranks)[1]) warning("in order to create a valid sample copula par.m must not be larger than the number of non-missing observations for each variable")
-                
+
               sij <- lapply(1:dim(.Object@ranks)[2], function(i) cumsum(prop.table(table(cut(.Object@relRanks[,i], breaks=seq(0,1,length.out=par.m[i]+1), include.lowest=T)))) )
               # sij ist kein data.frame, wenn mpars sich unterscheiden
               sij <- lapply(sij, function(x) c(0,x))
               interim <- lapply(1:dim(ranks)[2], function(i) cut(rel.ranks[,i], breaks=unique(sij[[i]]), include.lowest=T))
               d <- as.data.frame(lapply(interim, as.numeric))
-              Z <- as.matrix(as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+              Z <- as.matrix(as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] +
               1])  )))
-           }) 
+           })
     colnames(Z) <- colnames(.Object@ranks)
-    return(Z)
+
+    if (return_extra_objects) {
+      return(list(Z = Z, rsims = rsims, usims = usims, rsims.index = rsims.index))
+    } else {
+      return(Z)
+    }
   }
   #simulating: main function
   .Object@rand =  function(n=1, patch = .Object@patch, patchpar=NULL, keep_ties=NULL, return_extra_objects=F) {
     # step 1-3
-    Z <- .Object@rpatch(n, patch, patchpar, keep_ties)
+    #Z <- .Object@rpatch(n, patch, patchpar, keep_ties)
+    tmp <- .Object@rpatch(n, patch, patchpar, keep_ties, return_extra_objects = TRUE)
+    Z <- tmp$Z
+    rsims <- tmp$rsims
+    usims <- tmp$usims
     #Z <- sweep((rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  ),2,par.m,"/")})
               #(rsims-1+copula::rCopula(n,copula::normalCopula(par.rho, dim=.Object@dim))  )/par.m})
   # missing: bernstein, varwc
 
-  if (TRUE | !numericCDF) {
+  if (!numericCDF) { #  if (TRUE | !numericCDF) {
     #step 4
     switch(.Object@family,#match.arg(.Object@family),
     binom = {d<-ceiling(sweep(Z,2,.Object@pars.a,"*"))},
@@ -847,11 +1018,11 @@ setMethod("initialize", "PUCopula", function(.Object, dimension=0, factor=1, fam
                        rsims <- Z #???check sample copula formulas again
               ranks <- apply(rsims,2,rank); ranks
               rel.ranks <- (ranks-0.5)/dim(ranks)[1]; rel.ranks #mit stetigkeitskorrektur, entspricht z
-      
+
               # smoothing parameter must exist for each dimension
               if (length(.Object@pars.a)<dim(ranks)[2]) .Object@pars.a <- rep_len(.Object@pars.a,dim(ranks)[2])
               if (max(.Object@pars.a ) > dim(ranks)[1]) warning("in order to create a valid sample copula pars.a must not be larger than the number of non-missing observations for each variable")
-      
+
             #  cat("relranks"); print(head(rel.ranks)); cat("rr"); print(head(rr)) ; cat("--")
               #prop.table(table(cut(rel.ranks[,1], breaks=seq(0,1,length.out=m.par[1]+1), include.lowest=T)))
              # print("todo:"); print(dim(ranks)) ; print("--"); print(rel.ranks[,1]); print("--"); print(pars.a); #print(paste("for i=",i))
@@ -895,7 +1066,7 @@ print("sij[[1]]"); print(sij)
       #         return(runif(1,min=npart[i],max=npart[i+1]))
       #         }
               #rslt <-  apply(d,1:2,unif_i,partition=newpartition)
-              rslt <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] + 
+              rslt <- as.data.frame(lapply(1:dim(ranks)[2], function(i) runif(length(d[[i]]), min = sij[[i]][!duplicated(sij[[i]])][d[[i]]], max = sij[[i]][!duplicated(sij[[i]])][d[[i]] +
           1])  ))
               } ,
     gamma = { rslt <- exp(-qgamma(matrix(runif(n*.Object@dim),nrow=n,ncol=.Object@dim),
@@ -947,6 +1118,7 @@ print("sij[[1]]"); print(sij)
       #   print(paste("replacement",.mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } ) ))
       #   rs[j,i] <- .mcmcMH(target = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=TRUE)) } )       #ob das funktioniert, index i korrekt benutzt??
       # rs[j,i] <- .mh_sample(dens = function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } )       #ob das funktioniert, index i korrekt benutzt??
+      if (!require(armspp)) stop("numerically determining the CDF requires the armspp package, which is not installed.")
       smpl <- armspp::arms(5000, function(theta) { return(.Object@fdenss[[i]](u=theta,s=d[j,i],log=F)) } , 0, 1)#smpl <- armspp::arms(5000, .Object@fdenss[[i]](u=theta,s=d[j,i],log=T), 0, 1)
       rs[j,i] <- smpl[length(smpl)]
     }

@@ -3,72 +3,91 @@
 \docType{class}
 \name{PUCopula-class}
 \alias{PUCopula-class}
-\alias{PUCopula}
-\alias{initialize,PUCopula-method}
-\title{An S4 class to represent a partition of unity copula.}
-\usage{
-\S4method{initialize}{PUCopula}(.Object, dimension = 0, factor = 1,
-  family = c("binom", "nbinom", "poisson", "sample", "gamma", "beta"),
-  pars.a = c(10, 10), patch = c("rook", "uFrechet", "lFrechet",
-  "varwc", "Bernstein", "Gauss"), patchpar = list(NULL), data,
-  continuous = logical(0), numericCDF = FALSE)
-}
+\title{S4 class representing a partition of unity copula}
 \value{
-An object of class PUcopula
+An object of class \code{PUCopula}.
 }
 \description{
-An S4 class to represent a partition of unity copula.
+The \code{PUCopula} class implements partition-of-unity copulas as
+developed in Pfeifer et al. (2016, 2017, 2019). It provides a
+framework for constructing copulas using general partitions of unity,
+including both discrete and continuous cases.
 }
-\section{Methods (by generic)}{
-\itemize{
-\item \code{initialize}: initializes a PUcopula object
-}}
-
 \section{Slots}{
 
 \describe{
-\item{\code{dim}}{A length-one numeric vector; dimension of PU-copula}
+\item{\code{dim}}{Numeric scalar. Dimension of the copula.}
 
-\item{\code{family}}{Character or vector of characters: family determining the desnities fdens}
+\item{\code{family}}{Character vector. Specifies the family of the PU copula. (and therefore the densities \code{fdenss})}
 
-\item{\code{par.factor}}{A length-n numeric vector}
+\item{\code{par.factor}}{Numeric vector. Scaling parameter for ranks.}
 
-\item{\code{pars.a}}{A length-one numeric vector: defined as integral from 0 to 1 over phi(s,u) for s in r. Will be evauated numerically}
+\item{\code{pars.a}}{Numeric vector. Parameters controlling the distribution of \eqn{\varphi}....}
 
-\item{\code{patchpar}}{A list containing parameters for the copula driver, e.g. rho in case of Gauss, K,m in case of Bernstein,...}
+\item{\code{patchpar}}{List. Parameters for the copula driver, e.g. rho in case of Gauss copula driver, K,m in case of Bernstein,...}
 
-\item{\code{p}}{A length-one numeric vector}
+\item{\code{p}}{Matrix. Internal parameter representation.}
 
-\item{\code{phis}}{A list of functions \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
+\item{\code{phi}}{Function. Base density \eqn{\varphi(u, s)}.... (obsolete due to phis)}
+
+\item{\code{psy}}{Function. Secondary density function....  (obsolete due to phis)}
+
+\item{\code{phis}}{List of functions. Collection of component densities.... \eqn{\varphi_k(s,u)}{phi_k(s,u)} for \eqn{k=1,dots,d\in N}{k=1,...,d in N}.    Either continuous case: A list of functions which represent Lebesgue densities of distributions over R with a parameter u in (0,1), i.e.
 \deqn{\varphi_k(s,u)\geq 0 \text{ and } \int_{-\infty}^\infty \varphi_k(s,u)\, ds = 1 \text{ for } u \in (0,1),}{phi_k(s,u) \geq 0 and \int phi_k(s,u), ds = 1 for u in (0,1),}
 Or (discrete case): A list of functions which represent discrete probabilities over Z+ with a parameter u in (0,1).}
 
-\item{\code{alphs}}{A list of functions. Integral over the elements of phis w.r.t. u, i.e. \deqn{\alpha_k(s):=\int_0^1 \varphi_k(s,u)\, du \in (0,\infty)}{alpha_k(s):=int_0^1 phi_k(s,u) du in (0,\infty)}}
+\item{\code{continuous}}{Logical vector. Indicates whether components are continuous....}
 
-\item{\code{alphsCDF}}{A list of functions. CDFs corresponding to the densities defined by alphs, i.e. \deqn{A_k(s) := \int_{-\infty}^s \alpha_k(w) \, dw \text{ for } s \in R}{A_k(s) := int_-\infty^s alpha_k(w) dw for s in R}}
+\item{\code{alph}}{Function. Integral of \eqn{\varphi}....}
 
-\item{\code{fdenss}}{A list of functions. Densities obtained from normalizing the functions \eqn{\varphi(s,u)}{phi(s,u)} (from slot phis) w.r.t. \eqn{u \in 0,1}{u in (0,1)}, i.e. \deqn{f_k(s,u) := \frac{\varphi_k(s,u)}{\alpha_k(s)}, \, u \in (0,1) \text{ for } s \in R}{f_k(s,u) := phi_k(s,u)/alpha_k(s), u in (0,1) for s in R}}
+\item{\code{beta}}{Function. Integral of \eqn{\psi}....}
 
-\item{\code{PUdens}}{density function of the (continuous) partition of unity copula defined by  \deqn{c(\mathbf{u}) := \int_{-\infty}^\infty \cdots \int_{-\infty}^\infty p(s_1,\cdots,s_d) \prod_{k=1}^d f_k(s_k, u_k) \, ds_1 \cdots ds_d, \mathbf{u} = (u_1,\cdots,u_d) \in (0,1)^d }{c(u) := int ... int p(s_1,...,s_d) \prod_k=1^d f_k(s_k, u_k) ds_1 ... ds_d, u = (u_1,...,u_d) in (0,1)^d }
+\item{\code{alphs}}{List of functions. Marginal densities.... Integral over the elements of phis w.r.t. u, i.e. \deqn{\alpha_k(s):=\int_0^1 \varphi_k(s,u)\, du \in (0,\infty)}{alpha_k(s):=int_0^1 phi_k(s,u) du in (0,\infty)}}
+
+\item{\code{alphsCDF}}{List of functions. CDFs corresponding to densities \code{alphs}, i.e. \deqn{A_k(s) := \int_{-\infty}^s \alpha_k(w) \, dw \text{ for } s \in R}{A_k(s) := int_-\infty^s alpha_k(w) dw for s in R}}
+
+\item{\code{opstart}}{List. Starting values for optimization....}
+
+\item{\code{cdflim}}{List. Limits for numerically stable CDF evaluation....}
+
+\item{\code{cdfdom}}{List. Effective domain of the CDFs....}
+
+\item{\code{alphsquantf}}{List. Fast quantile approximations....}
+
+\item{\code{cdfappx}}{List. Approximate CDF functions....}
+
+\item{\code{alphsobjective}}{List. Objective functions for quantiles....}
+
+\item{\code{alphsquant}}{List. Quantile functions....}
+
+\item{\code{fdens}}{Function. Density function.... (obsolete due to fdenss)}
+
+\item{\code{gdens}}{Function. Secondary density.... (obsolete due to fdenss)}
+
+\item{\code{fdenss}}{List of functions. Contains densities obtained from normalizing the functions \eqn{\varphi(s,u)}{phi(s,u)} (from slot phis) w.r.t. \eqn{u \in 0,1}{u in (0,1)}, i.e. \deqn{f_k(s,u) := \frac{\varphi_k(s,u)}{\alpha_k(s)}, \, u \in (0,1) \text{ for } s \in R}{f_k(s,u) := phi_k(s,u)/alpha_k(s), u in (0,1) for s in R}}
+
+\item{\code{cpatch}}{Function. Copula driver density....}
+
+\item{\code{PUdens}}{Function. Density of the (continuous) PU copula defined by  \deqn{c(\mathbf{u}) := \int_{-\infty}^\infty \cdots \int_{-\infty}^\infty p(s_1,\cdots,s_d) \prod_{k=1}^d f_k(s_k, u_k) \, ds_1 \cdots ds_d, \mathbf{u} = (u_1,\cdots,u_d) \in (0,1)^d }{c(u) := int ... int p(s_1,...,s_d) \prod_k=1^d f_k(s_k, u_k) ds_1 ... ds_d, u = (u_1,...,u_d) in (0,1)^d }
 where \eqn{p(s_1,\cdots,s_d)}{p(s_1,...,s_d)} denotes the density of an arbitrary \eqn{d}-dimensional random vector \eqn{\mathbf{S}=S_1,\cdots,S_d)}{S=S_1,...,S_d)} over \eqn{R^d} with marginal densities \eqn{\alpha(cdot)}{alpha_k(.)} for \eqn{S_k}.}
 
-\item{\code{fq}}{A length-one numeric vector}
+\item{\code{fq}}{Function. Auxiliary function.}
 
-\item{\code{gq}}{A length-one numeric vector}
+\item{\code{gq}}{Function. Auxiliary function.}
 
-\item{\code{patch}}{A length-one numeric vector}
+\item{\code{patch}}{Character. Patchwork type.}
 
-\item{\code{data}}{A length-one numeric vector}
+\item{\code{dPWork}}{Function. Patchwork density....}
 
-\item{\code{ranks}}{A length-one numeric vector}
+\item{\code{data}}{Matrix. Input data.}
 
-\item{\code{relRanks}}{A length-one numeric vector}
+\item{\code{ranks}}{Matrix. Rank-transformed data.}
 
-\item{\code{rpatch}}{A function which generates random samples from the specified patchwork.}
+\item{\code{relRanks}}{Matrix. Relative ranks.}
 
-\item{\code{patchpar}}{Parameter for the chosen patchwork type (used currently for type Gauss)}
+\item{\code{rpatch}}{Function. Patchwork sampler - generates random samples from the specified patchwork.}
 
-\item{\code{rand}}{random number generator to simulate from PU copula}
+\item{\code{rand}}{Function. Random number generator to simulate from PU copula.}
 }}
 
 \examples{
@@ -87,7 +106,11 @@ plot(x@ranks, sub="emp. rank vectors", xlab="", ylab="")
 # plot the lower Fréchet driver, i.e. phi=-1
 plot(x@rpatch(2000,"lFrechet"), sub="lower Fréchet driver, phi=-1", xlab="", ylab="")
 # plot for phi=-0.8
-plot(x@rpatch(2000,"Bernstein",list(m=20,K=20)), sub="Bernstein copula, m=20, K=20", xlab="", ylab="")
+plot(
+  x@rpatch(2000,"Bernstein",list(m=20,K=20)),
+  sub="Bernstein copula, m=20, K=20",
+  xlab="", ylab=""
+)
 # plot for phi=0 (rook copula)
 plot(x@rpatch(2000,"rook"), sub="rook copula, phi=0", xlab="", ylab="")
 # plot for phi=0.9
@@ -96,7 +119,6 @@ plot(x@rpatch(2000,"Gauss",0.9), sub="phi=0.9", xlab="", ylab="")
 plot(x@rpatch(2000,"uFrechet"), sub="upper Fréchet driver, phi=1", xlab="", ylab="")
 # single plot window
 par(mfrow=c(1,1))
-plot(x@rpatch(2000,"Gauss",-0.8), sub="phi = -0.8", xlab="", ylab="")
 
 # plot the densities given by phis (=densities of Gamma distributions)
 # plot for s=1,3,5,7,...,999 (s must be in (0,inf))
@@ -106,7 +128,12 @@ xs=c(seq(0,0.01,length.out=200),seq(0.02,1,length.out=200))
 foo <- function(u) x@phi(u,1)
 ys=foo(xs)
 # plot for s=1
-plot(x=xs,y=ys, col=1, ylim=c(0,0.4), xlim=c(0,1),type = "l") #plot(foo, col=1, ylim=c(0,0.94), xlim=c(0,1)) # ylim=c(0,1e-88)
+plot(
+  x=xs,y=ys,
+  col=1,
+  ylim=c(0,0.4), xlim=c(0,1),
+  type = "l"
+) #plot(foo, col=1, ylim=c(0,0.94), xlim=c(0,1)) # ylim=c(0,1e-88)
 # repeat for  s=3,5,7,...,999
 for (i in 2:500) {
   foo <- function(u) x@phi(u,i*2-1)
@@ -115,7 +142,9 @@ for (i in 2:500) {
 }
 # for a Gamma PUC the alphs are densities of inverse Pareto distributions...
 plot(x@alphs[[1]], xlim=c(0,500))
-# the fdenss are basically a normalization of the phis using alphs - for a fixes s they are densities of exponentially transformed Gamma distributions
+# the fdenss are basically a normalization of the phis using alphs
+# for a fixes s they are densities of exponentially transformed
+# Gamma distributions
 # heatplot:
 us <- seq(0,1,length.out=100)
 ss <- seq(1,500,length.out=100)
@@ -123,12 +152,70 @@ zs <- matrix(nrow=length(us),ncol=length(ss))
 for (s in 1:length(ss)) zs[,s] <- x@fdenss[[1]](us, s)
 image(x=us, y=ss, z=zs, col=terrain.colors(15))
 
-#For the simulation from the Gamma copula, the slots alphsCDF and Qk/corresponnding quantile are used internally
+#For the simulation from the Gamma copula, the slots alphsCDF
+# and Qk/corresponnding quantile are used internally
 # plot the CDF corresponding to density alphs[1]
+\dontrun{
+x <- PUCopula(family="gamma", pars.a=c(40, 43), patch="lFrechet",data=stormflood, numericCDF=TRUE)
+
+warnings()
+# Warning messages:
+#   1: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 2: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 3: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 4: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 5: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 6: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 7: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 8: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 9: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 10: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 11: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 12: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 13: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 14: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 15: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 16: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 17: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 18: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 19: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 20: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 21: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 22: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 23: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 24: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 25: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 26: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 27: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 28: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 29: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 30: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 31: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 32: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 33: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 34: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 35: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 36: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 37: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 38: In phis[[i]](u, s) : outside range (0,inf) for s = -752.818778594017
+# 39: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 40: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 41: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 42: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 43: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 44: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 45: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 46: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 47: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 48: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 49: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+# 50: In phis[[i]](u, s) : outside range (0,inf) for s = -91.7078148698631
+
 plot(x@alphsCDF[[1]],xlim=c(0,100))
 x@alphsobjective[[1]](5,0.8)
 x@alphsquant[[1]](0.8)
 x@rand(1)
+}
 
 # Create a beta copula
 x <- PUCopula(family="beta", pars.a=c(40, 43), patch="lFrechet",data=stormflood)
@@ -162,4 +249,20 @@ x@alph(s)
 #[1] 6.530307e-06
 x@pars.a[1]*s^(x@pars.a[1]-1)/((1+s)^(x@pars.a[1]+1))
 #[1] 6.530261e-06
+}
+\references{
+Pfeifer, D., Tsatedem, H. A., Mändle, A., and Girschig, C. (2016).
+New copulas based on general partitions-of-unity and their applications
+to risk management. \emph{Dependence Modeling}, 4(1).
+\doi{10.1515/demo-2016-0006}
+
+Pfeifer, D., Mändle, A., and Ragulina, O. (2017).
+New copulas based on general partitions-of-unity and their applications
+to risk management (part II). \emph{Dependence Modeling}, 5(1), 246--255.
+\doi{10.1515/demo-2017-0014}
+
+Pfeifer, D., Mändle, A., Ragulina, O., and Girschig, C. (2019).
+New copulas based on general partitions-of-unity (part III) ---
+the continuous case. \emph{Dependence Modeling}, 7(1), 181--201.
+\doi{10.1515/demo-2019-0009}
 }
